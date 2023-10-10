@@ -11,6 +11,7 @@
 ### Dependencies
 
 - beast
+- maven
 - jdk 1.8
 - docker
 
