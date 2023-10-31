@@ -1,0 +1,13 @@
+version: "2.1"
+
+services:
+  beast:
+    build:
+      context: "."
+      dockerfile: "./config/Dockerfile"
+    volumes:
+      - ./data:/data
+    user: root
+    environment:
+      - GRANT_SUDO=yes
+    tty: true
