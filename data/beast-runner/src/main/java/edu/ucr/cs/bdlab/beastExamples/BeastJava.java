@@ -48,16 +48,15 @@ public class BeastJava {
     try {
       // 1- Load raster and vector data
   
-      JavaRDD<ITile<Float>> treecover = sparkContext.geoTiff("treecover");
-      JavaRDD<IFeature> countries = sparkContext.shapefile("ne_10m_admin_0_countries.zip");
+      JavaRDD<ITile<Integer>> treecover = sparkContext.geoTiff("/data/test/treecover");
+      JavaRDD<IFeature> countries = sparkContext.shapefile("/data/test/ne_10m_admin_0_countries.zip");
 
       // 2- Run the Raptor join operation
-      JavaRDD<RaptorJoinFeature<Float>> join =
-          JavaSpatialRDDHelper.<Float>raptorJoin(countries, treecover, new BeastOptions())
-              .filter(v -> v.m() >= 0 && v.m() <= 100.0);
+      JavaRDD<RaptorJoinFeature<Integer>> join =
+          JavaSpatialRDDHelper.<Integer>raptorJoin(countries, treecover, new BeastOptions());
       // 3- Aggregate the result
       JavaPairRDD<String, Float> countries_treecover = join.mapToPair(v -> new Tuple2<>(v.feature(), v.m()))
-          .reduceByKey(Float::sum)
+          .reduceByKey(Integer::sum)
           .mapToPair(fv -> {
             String name = fv._1.getAs("NAME");
             float treeCover = fv._2;
@@ -65,6 +64,8 @@ public class BeastJava {
           });
       // 4- Write the output
       System.out.println("State\tTreeCover");
+      System.out.println("numResults: " + countries_treecover.collectAsMap().entrySet().size());
+
       for (Map.Entry<String, Float> result : countries_treecover.collectAsMap().entrySet())
         System.out.printf("%s\t%r\n", result.getKey(), result.getValue());
     } finally {
