@@ -30,45 +30,55 @@ import org.apache.spark.sql.SparkSession;
 import scala.Tuple2;
 import scala.Tuple5;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 public class BeastJava {
-  public static void main(String[] args) {
-    // Initialize Spark
+  public static void main(String[] args) throws IOException {
+
     SparkConf conf = new SparkConf().setAppName("Beast Example");
 
     // Set Spark master to local if not already set
     if (!conf.contains("spark.master"))
       conf.setMaster("local[*]");
-
-    // Create Spark session (for Dataframe API) and Spark context (for RDD API)
+    BufferedWriter writer = new BufferedWriter(new FileWriter("results.txt"));
     SparkSession sparkSession = SparkSession.builder().config(conf).getOrCreate();
     JavaSpatialSparkContext sparkContext = new JavaSpatialSparkContext(sparkSession.sparkContext());
 
+    String[] vectorSets = {"/data/test/treecover", "/data/test/ne_10m_admin_0_countries.zip"};
+    String[] rasterSets = {"/data/test/treecover", "/data/test/ne_10m_admin_0_countries.zip"};
+    BenchRunner runner = new BenchRunner();
+    // Generate the combinations we want to run benchmarks for
+    List<ABenchmark> benchmarks = new ArrayList<>();
     try {
-      // 1- Load raster and vector data
-  
-      JavaRDD<ITile<Integer>> treecover = sparkContext.geoTiff("/data/test/treecover");
-      JavaRDD<IFeature> countries = sparkContext.shapefile("/data/test/ne_10m_admin_0_countries.zip");
-
-      // 2- Run the Raptor join operation
-      JavaRDD<RaptorJoinFeature<Integer>> join =
-          JavaSpatialRDDHelper.<Integer>raptorJoin(countries, treecover, new BeastOptions());
-      // 3- Aggregate the result
-      JavaPairRDD<String, Float> countries_treecover = join.mapToPair(v -> new Tuple2<>(v.feature(), v.m()))
-          .reduceByKey(Integer::sum)
-          .mapToPair(fv -> {
-            String name = fv._1.getAs("NAME");
-            float treeCover = fv._2;
-            return new Tuple2<>(name, treeCover);
-          });
-      // 4- Write the output
-      System.out.println("State\tTreeCover");
-      System.out.println("numResults: " + countries_treecover.collectAsMap().entrySet().size());
-
-      for (Map.Entry<String, Float> result : countries_treecover.collectAsMap().entrySet())
-        System.out.printf("%s\t%r\n", result.getKey(), result.getValue());
+      for (String vectorSet : vectorSets)
+      for (String rasterSet : rasterSets
+      ) {
+        String vectorName = vectorSet.substring(vectorSet.lastIndexOf('/') + 1);
+        String rasterName = rasterSet.substring(rasterSet.lastIndexOf('/') + 1);
+        // Run the benchmark
+        ABenchmark benchmark = new SingleBenchmark(vectorName+rasterName, vectorSet,rasterSet,sparkContext);
+        benchmarks.add(benchmark);
+      }
+      benchmarks.forEach(benchmark -> benchmark.setup());
+      List<BenchmarkResult> results = runner.runBenchmarks(benchmarks.toArray(new ABenchmark[benchmarks.size()]));
+      
+      
+      results.forEach(r -> {
+        try {
+          writer.write(r.toString());
+        } catch (IOException e) {
+          System.out.println("Failed to write result " + r.toString()); 
+          e.printStackTrace();
+        }
+      });
+      //write results somehow :)
     } finally {
+      writer.close();
       // Clean up Spark session
       sparkSession.stop();
     }
