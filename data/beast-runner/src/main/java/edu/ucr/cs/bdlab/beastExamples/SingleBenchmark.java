@@ -36,7 +36,7 @@ public class SingleBenchmark extends ABenchmark {
             float treeCover = fv._2;
             return new Tuple2<>(name, treeCover);
           });
-   return i * treecover.count();
+   return i * countries_treecover.count();
   }
 	
 }
