@@ -13,11 +13,27 @@ public class Raven {
                         {1,1,1,3,2,2,2,2}, //
                         {1,1,1,2,2,2,2,2}}; //
         K2Raster K2 = new K2Raster(M, 8);
-        for (int i = 0; i < 2; i++) {
-            for (char j :  K2.Tree) {
-                System.out.print(j + "");
-            }
-            System.out.println("");
+        for (char j :  K2.Tree) {
+            System.out.print(j + "");
         }
+        System.err.println("");
+
+        // for (int i = 0; i < 3; i++) {
+        //     for (int j : K2.parent.get(i)) {
+        //         System.err.print(j + " ");
+        //     }
+        //     System.err.println("");
+        // }
+
+        for (int i : K2.LMin) {
+            System.err.print(i + " ");
+        }
+        System.err.println("");
+        
+        for (int i : K2.LMax) {
+            System.err.print(i + " ");
+        }
+        System.err.println("");
+        
     }
 }
