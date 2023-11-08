@@ -363,7 +363,7 @@ class BenchmarkUtil {
     return dummy / totalCount;
   }
 
-  public static double Mark8(String msg, String info, IntToDoubleFunction f,
+  public static BenchmarkResult Mark8(String msg, String info, IntToDoubleFunction f,
       int n, double minTime) {
     int count = 1, totalCount = 0;
     double dummy = 0.0, runningTime = 0.0, st = 0.0, sst = 0.0;
@@ -382,15 +382,14 @@ class BenchmarkUtil {
       }
     } while (runningTime < minTime && count < Integer.MAX_VALUE / 2);
     double mean = st / n, sdev = Math.sqrt((sst - mean * mean * n) / (n - 1));
-    System.out.printf("%-25s %s%15.1f ns %10.2f %10d%n", msg, info, mean, sdev, count);
-    return dummy / totalCount;
+    return new BenchmarkResult(String.format("%-25s %s%15.1f ns %10.2f %10d%n" , msg, info, mean, sdev, count), mean);
   }
 
-  public static double Mark8(String msg, IntToDoubleFunction f) {
+  public static BenchmarkResult Mark8(String msg, IntToDoubleFunction f) {
     return Mark8(msg, "", f, 10, 0.25);
   }
 
-  public static double Mark8(String msg, String info, IntToDoubleFunction f) {
+  public static BenchmarkResult Mark8(String msg, String info, IntToDoubleFunction f) {
     return Mark8(msg, info, f, 10, 0.25);
   }
 

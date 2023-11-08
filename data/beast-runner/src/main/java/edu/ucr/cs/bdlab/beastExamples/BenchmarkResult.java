@@ -8,6 +8,6 @@ public class BenchmarkResult {
 		this.time = time;
 	}
 	public String toString() {
-		return String.format("%s: %d ms", name, time);
+		return String.format("%s: %f ms", name, time);
 	}
 }
