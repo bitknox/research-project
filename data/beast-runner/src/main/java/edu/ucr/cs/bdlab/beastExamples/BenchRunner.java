@@ -10,9 +10,8 @@ public class BenchRunner {
 	public List<BenchmarkResult> runBenchmarks(ABenchmark[] benchmarks) {
 		for (ABenchmark benchmark : benchmarks) {
 			benchmark.setup();
-
-			double benchResult = BenchmarkUtil.Mark7(benchmark.name, benchmark);
-			results.add(new BenchmarkResult(benchmark.name, benchResult));
+			BenchmarkResult benchResult = BenchmarkUtil.Mark8(benchmark.name, "info",benchmark, 1, 1*60);
+			results.add(benchResult);
 		}
 		return results;
 	}

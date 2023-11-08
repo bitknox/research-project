@@ -22,8 +22,8 @@ public class SingleBenchmark extends ABenchmark {
   @Override
   public double applyAsDouble(int i) {
 
-    JavaRDD<ITile<Integer>> treecover = sparkContext.geoTiff("/data/test/treecover");
-      JavaRDD<IFeature> countries = sparkContext.shapefile("/data/test/ne_10m_admin_0_countries.zip");
+    JavaRDD<ITile<Integer>> treecover = sparkContext.geoTiff(rasterSet);
+      JavaRDD<IFeature> countries = sparkContext.shapefile(vectorSet);
 
       // 2- Run the Raptor join operation
       JavaRDD<RaptorJoinFeature<Integer>> join =
