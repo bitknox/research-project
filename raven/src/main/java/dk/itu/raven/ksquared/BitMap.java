@@ -84,6 +84,7 @@ public class BitMap implements Iterator<Integer>, Iterable<Integer> {
 
     @Override
     public Iterator<Integer> iterator() {
+        currentIteratorIndex = 0;
         return this;
     }
 
