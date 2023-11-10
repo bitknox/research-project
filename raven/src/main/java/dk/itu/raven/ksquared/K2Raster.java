@@ -8,21 +8,21 @@ import java.util.stream.Collectors;
 public class K2Raster {
     static final int k = 2;
 
-    public List<Character> Tree;
+    public BitMap Tree;
     public List<Integer> LMax;
     public List<Integer> LMin;
     public List<ArrayList<Integer>> parent;
 
     public K2Raster(int[][] M, int n) {
         int maxLevel = 1 + (int) Math.ceil(Math.log(n) / Math.log(k));
-        List<ArrayList<Character>> T = new ArrayList<ArrayList<Character>>(maxLevel);
+        List<BitMap> T = new ArrayList<>(maxLevel);
         List<ArrayList<Integer>> Vmax = new ArrayList<ArrayList<Integer>>(maxLevel);
         List<ArrayList<Integer>> Vmin = new ArrayList<ArrayList<Integer>>(maxLevel);
         int pmax[] = new int[maxLevel];
         int pmin[] = new int[maxLevel];
         parent = new ArrayList<>(maxLevel);
         for (int i = 0; i < maxLevel; i++) {
-            T.add(new ArrayList<>());
+            T.add(new BitMap(40));
             Vmax.add(new ArrayList<>());
             Vmin.add(new ArrayList<>());
             parent.add(new ArrayList<>());
@@ -31,30 +31,44 @@ public class K2Raster {
         Vmax.get(0).add(res[0]);
         Vmin.get(0).add(res[1]);
 
-        Tree = new ArrayList<>();
+        Tree = new BitMap(0);
         LMax = new ArrayList<>();
         LMin = new ArrayList<>();
 
-        Tree = T.subList(0, maxLevel -
-                1).stream().flatMap(Collection::stream).collect(Collectors.toList());
-        // use Tree instead
-        int length = 0;
+        Tree = new BitMap(100);
+        int bitmapIndex = 0;
+        for (int i = 0; i < maxLevel; i++) {
+            for (int j = 0; j < T.get(i).size(); j++) {
+                if (T.get(i).isSet(j)) {
+                    Tree.set(++bitmapIndex);
+                } else {
+                    Tree.unset(++bitmapIndex);
+                }
+            }
+        }
 
+        // use Tree instead
+        // int length = 0;
+        // int bitmapIndex = 0;
         for (int i = 1; i < maxLevel; i++) {
-            if (i != maxLevel - 1)
-                length += pmax[i];
+            // byte[] b = T.get(i).getBytes();
+            // System.out.println(b[0]);
+            // Tree.setBytes(b, bitmapIndex);
+            // bitmapIndex = T.get(i).size();
+            // // if (i != maxLevel - 1)
+            // length += pmax[i];
             for (int j = 0; j < pmax[i]; j++) {
                 LMax.add(Vmax.get(i - 1).get(parent.get(i).get(j)) - Vmax.get(i).get(j));
-                if (T.get(i).get(j) == '1') {
+                if (T.get(i).isSet(j)) {
                     LMin.add(Vmin.get(i).get(j) - Vmin.get(i - 1).get(parent.get(i).get(j)));
                 }
             }
         }
 
-        Tree = Tree.subList(0, length);
+        // Tree = Tree.subList(0, length);
     }
 
-    static int[] Build(int[][] M, int n, int level, int row, int column, List<ArrayList<Character>> T,
+    static int[] Build(int[][] M, int n, int level, int row, int column, List<BitMap> T,
             List<ArrayList<Integer>> Vmin, List<ArrayList<Integer>> Vmax, int[] pmax, int[] pmin,
             List<ArrayList<Integer>> parent, int caller) {
         int min, max;
@@ -72,7 +86,7 @@ public class K2Raster {
                         max = M[row + i][column + j];
                     }
                     Vmax.get(level).add(pmax[level], M[row + i][column + j]);
-                    T.get(level).add(pmax[level], '0');
+                    T.get(level).unset(pmax[level]);
                     parent.get(level).add(pmax[level], caller);
                     pmax[level]++;
                 } else {
@@ -85,11 +99,11 @@ public class K2Raster {
                     if (childMin != childMax) {
                         Vmin.get(level).add(pmin[level], childMin);
                         pmin[level]++;
-                        T.get(level).add(pmax[level], '1');
+                        T.get(level).set(pmax[level]);
                     } else {
                         Vmin.get(level).add(pmin[level], childMin);
                         pmin[level]++;
-                        T.get(level).add(pmax[level], '0');
+                        T.get(level).unset(pmax[level]);
                     }
                     parent.get(level).add(pmax[level], caller);
                     pmax[level]++;
