@@ -9,8 +9,8 @@ public class K2Raster {
     static final int k = 2;
 
     public BitMap Tree;
-    public List<Integer> LMax;
-    public List<Integer> LMin;
+    public DAC LMax;
+    public DAC LMin;
     public List<ArrayList<Integer>> parent;
 
     public K2Raster(int[][] M, int n) {
@@ -32,8 +32,8 @@ public class K2Raster {
         Vmin.get(0).add(res[1]);
 
         Tree = new BitMap(0);
-        LMax = new ArrayList<>();
-        LMin = new ArrayList<>();
+        List<Integer> LMaxList = new ArrayList<>(); // TODO: make these as arrays
+        List<Integer> LMinList = new ArrayList<>();
 
         Tree = new BitMap(1);
         int bitmapIndex = 0;
@@ -48,25 +48,17 @@ public class K2Raster {
             }
         }
 
-        // use Tree instead
-        // int length = 0;
-        // int bitmapIndex = 0;
         for (int i = 1; i < maxLevel; i++) {
-            // byte[] b = T.get(i).getBytes();
-            // System.out.println(b[0]);
-            // Tree.setBytes(b, bitmapIndex);
-            // bitmapIndex = T.get(i).size();
-            // // if (i != maxLevel - 1)
-            // length += pmax[i];
             for (int j = 0; j < pmax[i]; j++) {
-                LMax.add(Vmax.get(i - 1).get(parent.get(i).get(j)) - Vmax.get(i).get(j));
+                LMaxList.add(Vmax.get(i - 1).get(parent.get(i).get(j)) - Vmax.get(i).get(j));
                 if (T.get(i).isSet(j)) {
-                    LMin.add(Vmin.get(i).get(j) - Vmin.get(i - 1).get(parent.get(i).get(j)));
+                    LMinList.add(Vmin.get(i).get(j) - Vmin.get(i - 1).get(parent.get(i).get(j)));
                 }
             }
         }
 
-        // Tree = Tree.subList(0, length);
+        LMax = new DAC(LMaxList.stream().mapToInt(i -> i).toArray());
+        LMin = new DAC(LMinList.stream().mapToInt(i -> i).toArray());
     }
 
     static int[] Build(int[][] M, int n, int level, int row, int column, List<BitMap> T,
@@ -127,7 +119,34 @@ public class K2Raster {
         return new int[] { max, min };
     }
 
-    static void getCell(int n, int r, int c, int z, int maxval) {
-        
+    /**
+     * 🤬
+     * @param n size of the matrix
+     * @param r the row to access
+     * @param c the column to access
+     * @param z only God knows what this does
+     * @param maxval the max value in the matrix
+     * @return the value from the matrix at index {@code (r,c)}
+     */
+    private int getCell(int n, int r, int c, int z, int maxval) {
+        int nKths = (n/k);
+        z = this.Tree.rank(z) * k * k;
+        z = z + (r / nKths) * k + (c / nKths);
+        int val = LMax.accessFT(z + 1); //😡
+        maxval = maxval - val;
+        if (z >= Tree.size() || Tree.getOrZero(z + 1) == 0) //😡
+            return maxval;
+        return getCell(nKths, r % nKths, c % nKths, z, maxval);
+    }
+
+    /**
+     * @param n size of the matrix
+     * @param r the row to access
+     * @param c the column to access
+     * @param maxval the max value in the matrix
+     * @return the value from the matrix at index {@code (r,c)}
+     */
+    public int getCell(int n, int r, int c, int maxval) {
+        return getCell(n, r, c, -1, maxval);
     }
 }
