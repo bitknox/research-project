@@ -1,6 +1,8 @@
 package dk.itu.raven;
 
+import dk.itu.raven.ksquared.DAC;
 import dk.itu.raven.ksquared.K2Raster;
+import dk.itu.raven.ksquared.DAC.FTRep;
 
 public class Raven {
     public static void main(String[] args) {
@@ -36,5 +38,10 @@ public class Raven {
         }
         System.err.println("");
 
+        FTRep res = DAC.createFT(K2.LMax.stream().mapToInt(i -> i).toArray());
+        for (int i = 1; i <= K2.LMax.size(); i++) {
+            System.err.print(DAC.accessFT(res, i) + " ");
+        }
+        System.err.println("");
     }
 }

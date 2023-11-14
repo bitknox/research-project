@@ -14,7 +14,7 @@ public class K2Raster {
     public List<ArrayList<Integer>> parent;
 
     public K2Raster(int[][] M, int n) {
-        int maxLevel = 1 + (int) Math.ceil(Math.log(n) / Math.log(k));
+        int maxLevel =  1+(int) Math.ceil(Math.log(n) / Math.log(k));
         List<BitMap> T = new ArrayList<>(maxLevel);
         List<ArrayList<Integer>> Vmax = new ArrayList<ArrayList<Integer>>(maxLevel);
         List<ArrayList<Integer>> Vmin = new ArrayList<ArrayList<Integer>>(maxLevel);
@@ -35,9 +35,10 @@ public class K2Raster {
         LMax = new ArrayList<>();
         LMin = new ArrayList<>();
 
-        Tree = new BitMap(100);
+        Tree = new BitMap(1);
         int bitmapIndex = 0;
-        for (int i = 0; i < maxLevel; i++) {
+        // maxLevel-1 is a bit funky :-(
+        for (int i = 0; i < maxLevel-1; i++) {
             for (int j = 0; j < T.get(i).size(); j++) {
                 if (T.get(i).isSet(j)) {
                     Tree.set(++bitmapIndex);
@@ -119,8 +120,14 @@ public class K2Raster {
 
         if (min == max) {
             pmax[level] = pmax[level] - k * k;
+            // T.get(level).setSize(T.get(level).size()-k*k);
+            T.get(level).setSize(pmax[level]);
         }
 
         return new int[] { max, min };
+    }
+
+    static void getCell(int n, int r, int c, int z, int maxval) {
+        
     }
 }
