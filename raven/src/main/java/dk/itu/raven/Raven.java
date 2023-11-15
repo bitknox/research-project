@@ -20,17 +20,20 @@ public class Raven {
         }
         System.err.println("");
 
-        for (int i = 1; i <= K2.LMax.listLength; i++) {
-            System.err.print(K2.LMax.accessFT(i) + " ");
-        }
-        System.err.println("");
+        // for (int i = 1; i <= K2.LMax.listLength; i++) {
+        //     System.err.print(K2.LMax.accessFT(i) + " ");
+        // }
+        // System.err.println("");
 
-        for (int r = 0; r < 8; r++) {
-            for (int c = 0; c < 8; c++) {
-                System.err.print(K2.getCell(8, r, c, 5) + " ");
-            }
-            System.err.println("");
-        }
+        // for (int r = 0; r < 8; r++) {
+        //     for (int c = 0; c < 8; c++) {
+        //         System.err.print(K2.getCell(8, r, c, 5) + " ");
+        //     }
+        //     System.err.println("");
+        // }
 
+        for(int i : K2.getWindow(8, 5, 6, 0, 1)){
+            System.out.print(i + " ");
+        }
     }
 }
