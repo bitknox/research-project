@@ -15,6 +15,14 @@ public class K2Raster {
     public List<ArrayList<Integer>> parent;
 
     public K2Raster(int[][] M, int n) {
+        // ensures n is a power of k even if the n from the input is not
+        int original_n = n;
+        int real_n = 1;
+        while (real_n < n) {
+            real_n *= k;
+        }
+        n = real_n;
+        
         int maxLevel =  1+(int) Math.ceil(Math.log(n) / Math.log(k));
         List<BitMap> T = new ArrayList<>(maxLevel);
         List<ArrayList<Integer>> Vmax = new ArrayList<ArrayList<Integer>>(maxLevel);
@@ -28,7 +36,7 @@ public class K2Raster {
             Vmin.add(new ArrayList<>());
             parent.add(new ArrayList<>());
         }
-        int[] res = Build(M, n, 1, 0, 0, T, Vmin, Vmax, pmax, pmin, parent, 0);
+        int[] res = Build(M, n, original_n, 1, 0, 0, T, Vmin, Vmax, pmax, pmin, parent, 0);
         Vmax.get(0).add(res[0]);
         Vmin.get(0).add(res[1]);
         maxval = res[0];
@@ -74,7 +82,7 @@ public class K2Raster {
         LMin = new DAC(LMinList);
     }
 
-    private static int[] Build(int[][] M, int n, int level, int row, int column, List<BitMap> T,
+    private static int[] Build(int[][] M, int n, int original_n, int level, int row, int column, List<BitMap> T,
             List<ArrayList<Integer>> Vmin, List<ArrayList<Integer>> Vmax, int[] pmax, int[] pmin,
             List<ArrayList<Integer>> parent, int caller) {
         int min, max;
@@ -85,18 +93,24 @@ public class K2Raster {
         for (int i = 0; i < k; i++) {
             for (int j = 0; j < k; j++) {
                 if (lastlevel) {
-                    if (min > M[row + i][column + j]) {
-                        min = M[row + i][column + j];
+                    int matrix_value;
+                    if (row+i >= original_n || column+j >= original_n) {
+                        matrix_value = 0;
+                    } else {
+                        matrix_value = M[row + i][column + j];
                     }
-                    if (max < M[row + i][column + j]) {
-                        max = M[row + i][column + j];
+                    if (min > matrix_value) {
+                        min = matrix_value;
                     }
-                    Vmax.get(level).add(pmax[level], M[row + i][column + j]);
+                    if (max < matrix_value) {
+                        max = matrix_value;
+                    }
+                    Vmax.get(level).add(pmax[level], matrix_value);
                     T.get(level).unset(pmax[level]);
                     parent.get(level).add(pmax[level], caller);
                     pmax[level]++;
                 } else {
-                    int[] res = Build(M, nKths, level + 1, row + i * nKths, column + j * nKths, T, Vmin, Vmax, pmax,
+                    int[] res = Build(M, nKths, original_n, level + 1, row + i * nKths, column + j * nKths, T, Vmin, Vmax, pmax,
                             pmin, parent,
                             T.get(level).size());
                     int childMax = res[0];
