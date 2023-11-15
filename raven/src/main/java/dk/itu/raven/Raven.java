@@ -33,7 +33,7 @@ public class Raven {
         //     System.err.println("");
         // }
 
-        for(int i : K2.getWindow(9, 0, 8, 0, 8)){
+        for(int i : K2.getWindow(0, 8, 0, 8)){
             System.out.print(i + " ");
         }
     }

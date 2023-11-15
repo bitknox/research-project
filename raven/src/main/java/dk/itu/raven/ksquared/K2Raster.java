@@ -13,6 +13,7 @@ public class K2Raster {
     public DAC LMax;
     public DAC LMin;
     public List<ArrayList<Integer>> parent;
+    private int n;
 
     public K2Raster(int[][] M, int n) {
         // ensures n is a power of k even if the n from the input is not
@@ -21,7 +22,7 @@ public class K2Raster {
         while (real_n < n) {
             real_n *= k;
         }
-        n = real_n;
+        this.n = real_n;
         
         int maxLevel =  1+(int) Math.ceil(Math.log(n) / Math.log(k));
         List<BitMap> T = new ArrayList<>(maxLevel);
@@ -36,7 +37,7 @@ public class K2Raster {
             Vmin.add(new ArrayList<>());
             parent.add(new ArrayList<>());
         }
-        int[] res = Build(M, n, original_n, 1, 0, 0, T, Vmin, Vmax, pmax, pmin, parent, 0);
+        int[] res = Build(M, this.n, original_n, 1, 0, 0, T, Vmin, Vmax, pmax, pmin, parent, 0);
         Vmax.get(0).add(res[0]);
         Vmin.get(0).add(res[1]);
         maxval = res[0];
@@ -172,8 +173,8 @@ public class K2Raster {
      * @param c the column to access
      * @return the value from the matrix at index {@code (r,c)}
      */
-    public int getCell(int n, int r, int c) {
-        return getCell(n, r, c, -1, this.maxval);
+    public int getCell(int r, int c) {
+        return getCell(this.n, r, c, -1, this.maxval);
     }
 
     private class IntPointer {
@@ -229,10 +230,10 @@ public class K2Raster {
      * @param c2 column number for the bottom right corner of window
      * @return a window of the matrix
      */
-    public int[] getWindow(int n, int r1, int r2, int c1, int c2) {
+    public int[] getWindow(int r1, int r2, int c1, int c2) {
         int returnSize = (r2-r1 + 1) * (c2-c1 + 1);
         int[] out = new int[returnSize];
-        getWindow(n, r1, r2, c1, c2, -1, this.maxval, out, new IntPointer());
+        getWindow(this.n, r1, r2, c1, c2, -1, this.maxval, out, new IntPointer());
     
         return out;
     }
