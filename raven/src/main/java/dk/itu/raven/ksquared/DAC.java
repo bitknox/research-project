@@ -19,10 +19,111 @@ public class DAC {
     short[] base_bits;
     int[] tablebase;
     int tamtablebase;
+    private static final int FACT_RANK = 20;
     // public static class FTRep {
     // }
 
     static final int epsilon = 1;
+
+    private static short[] Optimize2(int[] list) {
+        int listLength = list.length;
+        int t,i,m,k;
+            
+        int maxInt=0;
+        //find max integer in list
+        for(i=0;i<listLength;i++)
+            if(maxInt<list[i])
+                maxInt = list[i];
+    
+        int nBits = bits(maxInt)-1;
+
+        int tamAux = nBits+2;
+        
+        int[] weight = new int[maxInt+1];
+    
+        for(i=0;i<maxInt+1;i++)
+            weight[i]=0;
+        
+
+        //count the number of times each integer appears in the list
+        for(i=0;i<listLength;i++)
+            weight[list[i]]++;
+        
+        // prefix-sum array of the weight array
+        int[] acumFreq = new int[tamAux];
+        
+        // compute prefix sum array
+        int acumValue = 0;
+        acumFreq[0]=0;	
+        int cntb = 1;
+        for(i=0;i<maxInt+1;i++){
+            if(i==(1<<cntb)){
+                acumFreq[cntb]=acumValue;
+                cntb++;
+            }
+                
+            acumValue += weight[i];
+            
+        }
+            
+        acumFreq[cntb]=listLength;
+        
+    
+        long[] s = new long[nBits+1];
+    
+        int[] l = new int[nBits+1];
+        int[] b = new int[nBits+1];
+    
+        long currentSize;
+        
+        m=nBits;
+    
+        s[m]=0;
+        l[m]=0;
+        b[m]=0;
+            
+        int[] fc = acumFreq;
+        
+        long minSize;
+        int minPos;
+        for(t=m;t>=0;t--){
+            minSize=Long.MAX_VALUE;
+            minPos=m;
+            for(i=m;i>=t+1;i--){
+                currentSize = s[i]+(fc[m+1]-fc[t])*(i-t+1)+(fc[m+1]-fc[t])/FACT_RANK;
+                if(minSize>currentSize){
+                    minSize = currentSize;
+                    minPos=i;
+                }
+            }
+            if(minSize < ((fc[m+1]-fc[t])*(m-t+1))){
+                s[t]=minSize;
+                l[t]=l[minPos]+1;
+                b[t]=minPos-t;
+                
+            }
+            else{
+                s[t]=(fc[m+1]-fc[t])*(m-t+1);
+                l[t]=1;
+                b[t]=m-t+1;				
+            }
+            
+        }
+        
+        int L = l[0];
+        
+        short[] kvalues = new short[L];
+        
+        t=0;
+        for(k=0;k< L;k++){
+            kvalues[k]= (short) b[t];
+            t = t+b[t];
+        }
+        
+        return kvalues;
+    
+        
+    }
 
     private static short[] Optimize(int[] cf) {
         int m = cf.length - 1;
@@ -75,8 +176,9 @@ public class DAC {
         int value, newvalue;
         int bits_BS_len = 0;
 
-        kvalues = Optimize(list);
+        kvalues = Optimize2(list);
         int nkvalues = kvalues.length;
+
 
         short kval;
         int oldval = 0;
@@ -87,9 +189,11 @@ public class DAC {
         do {
             oldval = newval;
             if (i >= nkvalues) {
-                kval = (short) (1 << (kvalues[nkvalues - 1])); // unsafe cast
-            } else
-                kval = (short) (1 << (kvalues[i])); // unsafe cast
+                kval =  bitshiftc(kvalues[nkvalues - 1]);
+            } else {
+                kval = bitshiftc(kvalues[i]);
+            }
+
             multval *= kval;
             newval = oldval + multval;
 
@@ -108,9 +212,10 @@ public class DAC {
         for (i = 0; i < this.tamtablebase; i++) {
             oldval = newval;
             if (i >= nkvalues) {
-                kval = (short) (1 << (kvalues[nkvalues - 1])); // unsafe cast
-            } else
-                kval = (short) (1 << (kvalues[i])); // unsafe cast
+                kval =  bitshiftc(kvalues[nkvalues - 1]);
+            } else {
+                kval = bitshiftc(kvalues[i]);
+            }
             multval *= kval;
             newval = oldval + multval;
             this.tablebase[i] = oldval;
@@ -248,7 +353,6 @@ public class DAC {
 
             rankini = this.bS.Rank(this.levelsIndex[j] + ini - 1) - this.rankLevels[j];
             ini = ini - rankini;
-
             partialSum = partialSum + (readByte << mult);
 
             mult += this.base_bits[j];
@@ -264,7 +368,6 @@ public class DAC {
             }
 
         }
-
         partialSum = partialSum + (readByte << mult) + this.tablebase[j];
 
         return partialSum;

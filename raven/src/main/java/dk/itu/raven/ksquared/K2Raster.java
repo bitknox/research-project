@@ -46,11 +46,11 @@ public class K2Raster {
         for (int i = 1; i < maxLevel; i++) {
             size_max += pmax[i];
             size_min += pmin[i];
-            System.out.println(pmin[i]);
+            // System.out.println(pmin[i]);
         }
 
-        System.out.println(size_max);
-        System.out.println(size_min);
+        // System.out.println(size_max);
+        // System.out.println(size_min);
 
         int[] LMaxList = new int[size_max];
         int[] LMinList = new int[size_min];
@@ -71,12 +71,13 @@ public class K2Raster {
         int imax = 0, imin = 0;
         for (int i = 1; i < maxLevel; i++) {
             for (int j = 0; j < pmax[i]; j++) {
-                LMaxList[imax++] = (Vmax.get(i - 1).get(parent.get(i).get(j)) - Vmax.get(i).get(j));
+                LMaxList[imax++] = Math.abs(Vmax.get(i - 1).get(parent.get(i).get(j)) - Vmax.get(i).get(j));
                 if (T.get(i).isSet(j)) {
-                    LMinList[imin++] = (Vmin.get(i).get(j) - Vmin.get(i - 1).get(parent.get(i).get(j)));
+                    LMinList[imin++] = Math.abs(Vmin.get(i).get(j) - Vmin.get(i - 1).get(parent.get(i).get(j)));
                 }
             }
         }
+
 
         LMax = new DAC(LMaxList);
         LMin = new DAC(LMinList);
@@ -174,10 +175,6 @@ public class K2Raster {
      */
     public int getCell(int n, int r, int c) {
         return getCell(n, r, c, -1, this.maxval);
-    }
-
-    private class IntPointer {
-        int index;
     }
 
     private void getWindow(int n, int r1, int r2, int c1, int c2, int z, int maxval, int[] out, IntPointer index) {

@@ -31,6 +31,11 @@ public abstract class Basics {
                 + __popcount_tab[(x >> 24) & 0xff];
     }
 
+    public static short bitshiftc(short shiftBy) {
+        if (shiftBy >= 32) return 0;
+        return (short) (1 << shiftBy);
+    }
+
     public static void bitset(int[] e, int p) {
         e[(p) / W] |= (1 << ((p) % W));
     }
