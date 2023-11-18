@@ -5,16 +5,11 @@ import dk.itu.raven.ksquared.K2Raster;
 
 public class Raven {
     public static void main(String[] args) {
-        int[][] M = { { 5, 5, 4, 4, 4, 4, 1, 1, 1 }, //
-                      { 5, 4, 4, 4, 4, 4, 1, 1, 1 }, //
-                      { 4, 4, 4, 4, 1, 2, 2, 1, 1 }, //
-                      { 3, 3, 4, 3, 2, 1, 2, 2, 1 }, //
-                      { 3, 4, 3, 3, 2, 2, 2, 2, 1 }, //
-                      { 4, 3, 3, 2, 2, 2, 2, 2, 1 }, //
-                      { 1, 1, 1, 3, 2, 2, 2, 2, 1 }, //
-                      { 1, 1, 1, 2, 2, 2, 2, 2, 1 }, //
-                      { 1, 1, 1, 1, 1, 1, 1, 1, 1 } }; //
-        K2Raster K2 = new K2Raster(M, 9);
+        int[][] M = { { 5, 5, 4, 4}, //
+                      { 5, 4, 0, 4}, //
+                      { 0, 0, 0, 0}, //
+                      { 0, 0, 0, 0}}; //
+        K2Raster K2 = new K2Raster(M, 4, 4);
 
         for (int j : K2.Tree) {
             System.out.print(j + "");

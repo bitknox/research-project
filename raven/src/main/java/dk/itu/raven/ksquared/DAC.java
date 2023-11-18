@@ -90,6 +90,7 @@ public class DAC {
                 kval = (short) (1 << (kvalues[nkvalues - 1])); // unsafe cast
             } else
                 kval = (short) (1 << (kvalues[i])); // unsafe cast
+            // System.err.println("kval: " + kval);
             multval *= kval;
             newval = oldval + multval;
 
