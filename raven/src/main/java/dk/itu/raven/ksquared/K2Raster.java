@@ -1,9 +1,7 @@
 package dk.itu.raven.ksquared;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class K2Raster {
     static final int k = 2;
@@ -13,17 +11,26 @@ public class K2Raster {
     public DAC LMax;
     public DAC LMin;
     public List<ArrayList<Integer>> parent;
+    private int n;
+    private int original_n, original_m;
 
-    public K2Raster(int[][] M, int n) {
+    /**
+     * bulds a K^2 Raster data-structure for an n*m matrix (meaning a 2-dimensional array with {@code n} rows and {@code m} columns)
+     * @param M the raw matrix data
+     * @param n number of rows in the given matrix
+     * @param m number of columns in the given matrix
+     */
+    public K2Raster(int[][] M, int n, int m) {
         // ensures n is a power of k even if the n from the input is not
-        int original_n = n;
+        this.original_n = n;
+        this.original_m = m;
         int real_n = 1;
-        while (real_n < n) {
+        while (real_n < n || real_n < m) {
             real_n *= k;
         }
-        n = real_n;
+        this.n = real_n;
         
-        int maxLevel =  1+(int) Math.ceil(Math.log(n) / Math.log(k));
+        int maxLevel =  1+(int) Math.ceil(Math.log(Math.max(n,m)) / Math.log(k));
         List<BitMap> T = new ArrayList<>(maxLevel);
         List<ArrayList<Integer>> Vmax = new ArrayList<ArrayList<Integer>>(maxLevel);
         List<ArrayList<Integer>> Vmin = new ArrayList<ArrayList<Integer>>(maxLevel);
@@ -36,7 +43,7 @@ public class K2Raster {
             Vmin.add(new ArrayList<>());
             parent.add(new ArrayList<>());
         }
-        int[] res = Build(M, n, original_n, 1, 0, 0, T, Vmin, Vmax, pmax, pmin, parent, 0);
+        int[] res = Build(M, this.n, original_n, original_m, 1, 0, 0, T, Vmin, Vmax, pmax, pmin, parent, 0);
         Vmax.get(0).add(res[0]);
         Vmin.get(0).add(res[1]);
         maxval = res[0];
@@ -46,11 +53,7 @@ public class K2Raster {
         for (int i = 1; i < maxLevel; i++) {
             size_max += pmax[i];
             size_min += pmin[i];
-            // System.out.println(pmin[i]);
         }
-
-        // System.out.println(size_max);
-        // System.out.println(size_min);
 
         int[] LMaxList = new int[size_max];
         int[] LMinList = new int[size_min];
@@ -68,6 +71,11 @@ public class K2Raster {
             }
         }
 
+        for (int i : Tree) {
+            System.err.print(i + " ");
+        }
+        System.err.println("");
+
         int imax = 0, imin = 0;
         for (int i = 1; i < maxLevel; i++) {
             for (int j = 0; j < pmax[i]; j++) {
@@ -83,9 +91,11 @@ public class K2Raster {
         LMin = new DAC(LMinList);
     }
 
-    private static int[] Build(int[][] M, int n, int original_n, int level, int row, int column, List<BitMap> T,
+    private static int[] Build(int[][] M, int n, int original_n, int original_m, int level, int row, int column, List<BitMap> T,
             List<ArrayList<Integer>> Vmin, List<ArrayList<Integer>> Vmax, int[] pmax, int[] pmin,
             List<ArrayList<Integer>> parent, int caller) {
+        // System.err.println("om: " + original_m);
+        // System.err.println("on: " + original_n);
         int min, max;
         min = Integer.MAX_VALUE;
         max = 0;
@@ -95,7 +105,7 @@ public class K2Raster {
             for (int j = 0; j < k; j++) {
                 if (lastlevel) {
                     int matrix_value;
-                    if (row+i >= original_n || column+j >= original_n) {
+                    if (row+i >= original_n || column+j >= original_m) {
                         matrix_value = 0;
                     } else {
                         matrix_value = M[row + i][column + j];
@@ -111,7 +121,7 @@ public class K2Raster {
                     parent.get(level).add(pmax[level], caller);
                     pmax[level]++;
                 } else {
-                    int[] res = Build(M, nKths, original_n, level + 1, row + i * nKths, column + j * nKths, T, Vmin, Vmax, pmax,
+                    int[] res = Build(M, nKths, original_n, original_m, level + 1, row + i * nKths, column + j * nKths, T, Vmin, Vmax, pmax,
                             pmin, parent,
                             T.get(level).size());
                     int childMax = res[0];
@@ -168,13 +178,12 @@ public class K2Raster {
     }
 
     /**
-     * @param n size of the matrix
      * @param r the row to access
      * @param c the column to access
      * @return the value from the matrix at index {@code (r,c)}
      */
-    public int getCell(int n, int r, int c) {
-        return getCell(n, r, c, -1, this.maxval);
+    public int getCell(int r, int c) {
+        return getCell(this.n, r, c, -1, this.maxval);
     }
 
     private void getWindow(int n, int r1, int r2, int c1, int c2, int z, int maxval, int[] out, IntPointer index) {
@@ -218,18 +227,19 @@ public class K2Raster {
     }
 
     /**
-     * 
-     * @param n size of the matrix
+     * Reads data from a window of the matrix given by the two points {@code (r1,c1)} and {@code (r2,c2)}
      * @param r1 row number for the top left corner of window
      * @param r2 row number for the bottom right corner of window
      * @param c1 column number for the top left corner of window
      * @param c2 column number for the bottom right corner of window
      * @return a window of the matrix
      */
-    public int[] getWindow(int n, int r1, int r2, int c1, int c2) {
+    public int[] getWindow(int r1, int r2, int c1, int c2) {
+        if (r1 < 0 || r1 >= original_n || r2 < 0 || r2 >= original_n || c1 < 0 || c1 >= original_m || c2 < 0 || c2 >= original_m)
+            throw new IndexOutOfBoundsException("looked up window (" + r1 + ", " + c1 + ", " + r2 + ", " + c2 + ") in matrix with size (" + original_n + ", " + original_m + ")");
         int returnSize = (r2-r1 + 1) * (c2-c1 + 1);
         int[] out = new int[returnSize];
-        getWindow(n, r1, r2, c1, c2, -1, this.maxval, out, new IntPointer());
+        getWindow(this.n, r1, r2, c1, c2, -1, this.maxval, out, new IntPointer());
     
         return out;
     }
