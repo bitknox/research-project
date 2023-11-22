@@ -74,6 +74,10 @@ public class K2Raster {
             }
         }
 
+        if (res[0] != res[1]) {
+            Tree.set(0);
+        }
+
         prefixsum = new int[Tree.size()];
         prefixsum[0] = 0;
         for (int i = 1; i < Tree.size(); i++) {
@@ -93,10 +97,10 @@ public class K2Raster {
         LMax = new DAC(LMaxList);
         LMin = new DAC(LMinList);
     }
-
+    
     public int[] getChildren(int index) {
         System.out.println("index: " + index);
-        if (Tree.getOrZero(index) == 0 && index != 0) {
+        if (Tree.getOrZero(index) == 0) {
             return new int[0];
         } else {
             index = prefixsum[index];
@@ -106,6 +110,10 @@ public class K2Raster {
             }
             return res;
         }
+    }
+
+    public int getSize() {
+        return this.n;
     }
 
     private static int[] Build(int[][] M, int n, int original_n, int original_m, int level, int row, int column,
