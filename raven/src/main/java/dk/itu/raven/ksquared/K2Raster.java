@@ -3,6 +3,8 @@ package dk.itu.raven.ksquared;
 import java.util.ArrayList;
 import java.util.List;
 
+import dk.itu.raven.util.BitMap;
+
 public class K2Raster {
     public static final int k = 2;
 

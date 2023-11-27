@@ -1,4 +1,4 @@
-package dk.itu.raven.ksquared;
+package dk.itu.raven.util;
 
 import java.util.Iterator;
 
@@ -67,7 +67,7 @@ public class BitMap implements Iterator<Integer>, Iterable<Integer> {
      * @param i
      * @return the number of 1's up to and including index {@code i}
      */
-    int rank(int i) {
+    public int rank(int i) {
         if(i == -1) return 0;
         int res = 0;
         for (int j = 1; j <= i + 1; j++) { //😡
@@ -110,6 +110,14 @@ public class BitMap implements Iterator<Integer>, Iterable<Integer> {
         map = new int[defaultCapacity / 32];
         capacity = defaultCapacity;
         limitPos = 0;
+    }
+
+    public int setTo(int pos, int val) {
+        if (val == 0) {
+            return unset(pos);
+        } else {
+            return set(pos);
+        }
     }
 
     /**

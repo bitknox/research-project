@@ -3,14 +3,24 @@ package dk.itu.raven;
 import com.github.davidmoten.rtree2.RTree;
 import com.github.davidmoten.rtree2.geometry.Geometries;
 import com.github.davidmoten.rtree2.geometry.Geometry;
-import com.github.davidmoten.rtree2.Entry;
 
 import dk.itu.raven.join.RavenJoin;
 import dk.itu.raven.ksquared.K2Raster;
+import dk.itu.raven.util.BitMap;
 
 public class Raven {
 
     public static void main(String[] args) {
+        BitMap bm = new BitMap(2);
+        bm.get(1);
+        bm.setTo(0, 0);
+		// assertFalse(bm.isSet(0));
+        bm.setTo(0, 1);
+		// assertFalse(bm.isSet(1));
+		// assertTrue(bm.isSet(0));
+        bm.setTo(1, 1);
+		// assertTrue(bm.isSet(1));
+
         int[][] M = { { 5, 5, 4, 4, 4, 4, 1, 1 }, //
                       { 5, 4, 4, 4, 4, 4, 1, 1 }, //
                       { 4, 4, 4, 4, 1, 2, 2, 1 }, //
@@ -59,7 +69,7 @@ public class Raven {
         //     System.out.println(entry.toString());
         // }
 
-        tree.visualize(600, 600).save("target/tree.png");
+        // tree.visualize(600, 600).save("target/tree.png");
         for (int i : K2.getWindow(0, 7, 0, 7)) {
             System.out.print(i + " ");
         }

@@ -51,7 +51,13 @@ public class Square {
 		int x = topLeft.x + (index % k) * childSize;
 		int y = topLeft.y + (index / k) * childSize;
 		return new Square(x, y, childSize);
+	}
 
+	public int getTopX() {
+		return topLeft.x;
+	}
+	public int getTopY() {
+		return topLeft.y;
 	}
 
 	private class Point {
