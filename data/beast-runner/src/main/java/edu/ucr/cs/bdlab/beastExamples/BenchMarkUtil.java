@@ -371,6 +371,7 @@ class BenchmarkUtil {
       count *= 2;
       st = sst = 0.0;
       for (int j = 0; j < n; j++) {
+        System.out.println("run: " + j);
         Timer t = new Timer();
         for (int i = 0; i < count; i++)
           dummy += f.applyAsDouble(i);

@@ -22,7 +22,7 @@ public class BeastJava {
     BufferedWriter writer = new BufferedWriter(new FileWriter("results.txt"));
     SparkSession sparkSession = SparkSession.builder().config(conf).getOrCreate();
     JavaSpatialSparkContext sparkContext = new JavaSpatialSparkContext(sparkSession.sparkContext());
-
+    sparkContext.setLogLevel("ERROR");
     String[] vectorSets = {
         "/data/testdata/vector/boundaries.zip", "/data/testdata/vector/cb_2018_us_state_500k.zip" };
     String[] rasterSets = { "/data/testdata/raster/glc2000", "/data/testdata/raster/treecover" };
