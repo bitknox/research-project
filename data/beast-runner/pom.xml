@@ -4,11 +4,11 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>edu.ucr.cs.bdlab</groupId>
-  <artifactId>beast-examples</artifactId>
+  <groupId>dk.itu.raven.beast-runner</groupId>
+  <artifactId>beast-runner</artifactId>
   <version>0.9.4-SNAPSHOT</version>
 
-  <name>beast-examples</name>
+  <name>beast-runner</name>
   <url>https://bitbucket.org/eldawy/beast-examples</url>
 
   <properties>

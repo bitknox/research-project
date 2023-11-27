@@ -371,18 +371,19 @@ class BenchmarkUtil {
       count *= 2;
       st = sst = 0.0;
       for (int j = 0; j < n; j++) {
+        System.out.println("run: " + j);
         Timer t = new Timer();
         for (int i = 0; i < count; i++)
           dummy += f.applyAsDouble(i);
-        runningTime = t.check();
+        runningTime += t.check();
         double time = runningTime * 1e9 / count;
         st += time;
         sst += time * time;
         totalCount += count;
       }
-    } while (runningTime < minTime && count < Integer.MAX_VALUE / 2);
+    } while (runningTime < minTime);
     double mean = st / n, sdev = Math.sqrt((sst - mean * mean * n) / (n - 1));
-    return new BenchmarkResult(String.format("%-25s %s%15.1f ns %10.2f %10d%n" , msg, info, mean, sdev, count), mean);
+    return new BenchmarkResult(String.format("%-25s %s%15.1f ns %10.2f %10d%n", msg, info, mean, sdev, count), mean);
   }
 
   public static BenchmarkResult Mark8(String msg, IntToDoubleFunction f) {
