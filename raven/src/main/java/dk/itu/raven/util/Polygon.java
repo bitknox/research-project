@@ -1,6 +1,5 @@
 package dk.itu.raven.util;
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
@@ -14,6 +13,23 @@ public class Polygon implements Geometry, Iterator<Point>, Iterable<Point> {
     private List<Point> points;
     private int currentIteratorIndex;
 
+    public Polygon(List<Point> points) {
+        this.points = points;
+        double minx = Double.MAX_VALUE, miny = Double.MAX_VALUE;
+        double maxx = Double.MIN_VALUE, maxy = Double.MIN_VALUE;
+        for (Point p : points) {
+            minx = Math.min(minx, p.x());
+            maxx = Math.max(maxx, p.x());
+            miny = Math.min(miny, p.y());
+            maxy = Math.max(maxy, p.y());
+        }
+        this.mbr = Geometries.rectangle(minx, miny, maxx, maxy);
+    }
+
+    public Polygon(List<Point> points, Rectangle mbr) {
+        this.points = points;
+        this.mbr = mbr;
+    }
 
     // FIXME: this method is not correct
     private double distanceSimple(Rectangle r) {
