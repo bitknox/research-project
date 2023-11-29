@@ -1,49 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
-
   <groupId>dk.itu.raven</groupId>
   <artifactId>raven</artifactId>
-  <version>0.1.0</version>
-
   <name>Raven</name>
-  <url></url>
-
-  <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.source>1.8</maven.compiler.source>
-    <maven.compiler.target>1.8</maven.compiler.target>
-  </properties>
-
-  <dependencies>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.11</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.github.davidmoten</groupId>
-      <artifactId>rtree2</artifactId>
-      <version>0.9.3</version>
-    </dependency>
-    <dependency>
-      <groupId>edu.ucr.cs.bdlab</groupId>
-      <artifactId>beast-spark</artifactId>
-      <version>0.10.0-RC1</version>
-    </dependency>
-    <dependency>
-      <groupId>mil.nga</groupId>
-      <artifactId>tiff</artifactId>
-      <version>2.0.5</version>
-    </dependency>
-  </dependencies>
-
+  <version>0.1.0</version>
   <build>
     <plugins>
-      <!-- This plugin compiles Scala files -->
       <plugin>
         <groupId>net.alchim31.maven</groupId>
         <artifactId>scala-maven-plugin</artifactId>
@@ -55,7 +18,6 @@
               <goal>add-source</goal>
               <goal>compile</goal>
             </goals>
-
           </execution>
           <execution>
             <id>scala-test-compile</id>
@@ -66,11 +28,17 @@
           </execution>
         </executions>
       </plugin>
-
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-shade-plugin</artifactId>
         <version>3.1.1</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+          </execution>
+        </executions>
         <configuration>
           <artifactSet>
             <includes>
@@ -78,12 +46,9 @@
               <include>com.github.davidmoten:rtree2</include>
               <include>com.github.davidmoten:guava-mini</include>
               <include>org.locationtech.jts:jts-core</include>
-              <!-- org.mortbay.jetty:jetty + dependencies -->
               <include>org.mortbay.jetty:jetty</include>
               <include>org.mortbay.jetty:jetty-util</include>
               <include>org.mortbay.jetty:servlet-api</include>
-              <!-- /org.mortbay.jetty:jetty + dependencies -->
-              <!-- org.geotools:gt-epsg-hsql + dependencies -->
               <include>org.geotools:gt-epsg-hsql</include>
               <include>org.geotools:gt-referencing</include>
               <include>org.geotools:gt-metadata</include>
@@ -108,9 +73,6 @@
               <include>commons-pool:commons-pool</include>
               <include>jgridshift:jgridshift-core</include>
               <include>net.sf.geographiclib:GeographicLib-Java</include>
-              <!-- /org.geotools:gt-epsg-hsql + dependencies -->
-
-              <!-- Beast includes -->
               <include>edu.ucr.cs.bdlab:beast-spark</include>
               <include>edu.ucr.cs.bdlab:cg</include>
               <include>edu.ucr.cs.bdlab:common</include>
@@ -133,19 +95,31 @@
           <finalName>raven-${project.version}</finalName>
           <outputDirectory>target/</outputDirectory>
           <transformers>
-            <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+            <transformer>
               <mainClass>dk.itu.raven.Raven</mainClass>
             </transformer>
           </transformers>
         </configuration>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>shade</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
     </plugins>
-  </build></project>
+  </build>
+  <dependencies>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.11</version>
+      <scope>test</scope>
+      <exclusions>
+        <exclusion>
+          <artifactId>hamcrest-core</artifactId>
+          <groupId>org.hamcrest</groupId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+  </dependencies>
+  <properties>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.target>1.8</maven.compiler.target>
+  </properties>
+</project>

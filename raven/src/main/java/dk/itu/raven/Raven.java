@@ -1,5 +1,13 @@
 package dk.itu.raven;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+import org.apache.hadoop.fs.Path;
+import org.locationtech.jts.geom.Coordinate;
+
 import com.github.davidmoten.rtree2.RTree;
 import com.github.davidmoten.rtree2.geometry.Geometries;
 import com.github.davidmoten.rtree2.geometry.Geometry;
@@ -7,50 +15,50 @@ import com.github.davidmoten.rtree2.geometry.Geometry;
 import dk.itu.raven.join.RavenJoin;
 import dk.itu.raven.ksquared.K2Raster;
 import dk.itu.raven.util.BitMap;
+import dk.itu.raven.util.Pair;
+import dk.itu.raven.util.PixelRange;
+import dk.itu.raven.util.Polygon;
+import dk.itu.raven.util.matrix.RastersMatrix;
+import edu.ucr.cs.bdlab.beast.common.BeastOptions;
+import edu.ucr.cs.bdlab.beast.geolite.IFeature;
+import edu.ucr.cs.bdlab.beast.io.shapefile.ShapefileFeatureReader;
+import mil.nga.tiff.FileDirectory;
+import mil.nga.tiff.Rasters;
+import mil.nga.tiff.TIFFImage;
+import mil.nga.tiff.TiffReader;
 
 public class Raven {
 
     public static void main(String[] args) {
-        BitMap bm = new BitMap(2);
-        bm.get(1);
-        bm.setTo(0, 0);
-		// assertFalse(bm.isSet(0));
-        bm.setTo(0, 1);
-		// assertFalse(bm.isSet(1));
-		// assertTrue(bm.isSet(0));
-        bm.setTo(1, 1);
-		// assertTrue(bm.isSet(1));
+        RTree<String, Geometry> rtree = RTree.star().maxChildren(6).create();
+        K2Raster k2Raster = null;
+        try {
+            TIFFImage tiffImage = TiffReader.readTiff(new File("C:\\Users\\alexa\\Downloads\\glc2000_v1_1_Tiff\\Tiff\\glc2000_v1_1.tif"));
+            List<FileDirectory> directories = tiffImage.getFileDirectories();
+            FileDirectory directory = directories.get(0);
+            Rasters rasters = directory.readRasters();
+            k2Raster = new K2Raster(new RastersMatrix(rasters));
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.exit(-1);
+        } 
 
-        int[][] M = { { 5, 5, 4, 4, 4, 4, 1, 1 }, //
-                      { 5, 4, 4, 4, 4, 4, 1, 1 }, //
-                      { 4, 4, 4, 4, 1, 2, 2, 1 }, //
-                      { 3, 3, 4, 3, 2, 1, 2, 2 }, //
-                      { 3, 4, 3, 3, 2, 2, 2, 2 }, //
-                      { 4, 3, 3, 2, 2, 2, 2, 2 }, //
-                      { 1, 1, 1, 3, 2, 2, 2, 2 }, //
-                      { 1, 1, 1, 2, 2, 2, 2, 2 } }; //
-        K2Raster K2 = new K2Raster(M, 8, 8);
-        for (int i = 0; i < 10; i++) {
-            int[] res = K2.getChildren(i);
-
-            for (int j : res) {
-                System.out.println(K2.LMax.accessFT(j));
+        System.out.println("done building R2");
+        
+        try (ShapefileFeatureReader featureReader = new ShapefileFeatureReader()) {
+            featureReader.initialize(new Path("C:\\Users\\alexa\\Downloads\\cb_2018_us_state_500k.zip"), new BeastOptions());
+            for (IFeature feature : featureReader) {
+                Polygon poly = new Polygon(feature.getGeometry().getCoordinates());
+                rtree = rtree.add(null, poly);
             }
-            System.out.println("");
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.exit(-1);
         }
-
-        RTree<String, Geometry> tree = RTree.star().maxChildren(6).create();
-        tree = tree.add("asd", Geometries.circle(300, 300, 200));
-        tree = tree.add("asd", Geometries.point(300, 400));
-        tree = tree.add("asd", Geometries.point(300, 200));
-        tree = tree.add("asd", Geometries.point(300, 100));
-        tree = tree.add("asd", Geometries.point(100, 10));
-        tree = tree.add("asd", Geometries.point(130, 10));
-        tree = tree.add("asd", Geometries.point(140, 10));
-        tree = tree.add("asd", Geometries.point(150, 10));
-        tree = tree.add("asd", Geometries.point(160, 10));
-        tree = tree.add("asd", Geometries.point(170, 10));
-
+        
+        System.out.println("done building R-Tree");
+        
         // Access nodes by checking if they are leafs or nonleafs
         // if they are nonleafs then we can access their children by casting them to
         // NonLeaf and then calling children() on them
@@ -61,17 +69,8 @@ public class Raven {
         //     System.out.println("Leaf");
         // }
 
-        RavenJoin join = new RavenJoin(K2, tree);
-        join.join();
-
-            
-        // for (Entry<String, Geometry> entry : tree.entries()) {
-        //     System.out.println(entry.toString());
-        // }
-
-        // tree.visualize(600, 600).save("target/tree.png");
-        for (int i : K2.getWindow(0, 7, 0, 7)) {
-            System.out.print(i + " ");
-        }
+        RavenJoin join = new RavenJoin(k2Raster, rtree);
+        List<Pair<Geometry, Collection<PixelRange>>> result = join.join();
+        System.out.println(result.size());
     }
 }

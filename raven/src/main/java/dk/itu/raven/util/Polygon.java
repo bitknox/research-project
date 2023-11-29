@@ -1,7 +1,10 @@
 package dk.itu.raven.util;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+
+import org.locationtech.jts.geom.Coordinate;
 
 import com.github.davidmoten.rtree2.geometry.Geometries;
 import com.github.davidmoten.rtree2.geometry.Geometry;
@@ -22,6 +25,21 @@ public class Polygon implements Geometry, Iterator<Point>, Iterable<Point> {
             maxx = Math.max(maxx, p.x());
             miny = Math.min(miny, p.y());
             maxy = Math.max(maxy, p.y());
+        }
+        this.mbr = Geometries.rectangle(minx, miny, maxx, maxy);
+    }
+
+    public Polygon(Coordinate[] coordinates) {
+        this.points = new ArrayList<>();
+        double minx = Double.MAX_VALUE, miny = Double.MAX_VALUE;
+        double maxx = Double.MIN_VALUE, maxy = Double.MIN_VALUE;
+        for (Coordinate coord : coordinates) {
+            Point p = Geometries.point(coord.x, coord.y);
+            minx = Math.min(minx, p.x());
+            maxx = Math.max(maxx, p.x());
+            miny = Math.min(miny, p.y());
+            maxy = Math.max(maxy, p.y());
+            this.points.add(p);
         }
         this.mbr = Geometries.rectangle(minx, miny, maxx, maxy);
     }

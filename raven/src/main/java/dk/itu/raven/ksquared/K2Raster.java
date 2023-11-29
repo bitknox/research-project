@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import dk.itu.raven.util.BitMap;
+import dk.itu.raven.util.matrix.Matrix;
 
 public class K2Raster {
     public static final int k = 2;
@@ -21,10 +22,10 @@ public class K2Raster {
      * array with {@code n} rows and {@code m} columns)
      * 
      * @param M the raw matrix data
-     * @param n number of rows in the given matrix
-     * @param m number of columns in the given matrix
      */
-    public K2Raster(int[][] M, int n, int m) {
+    public K2Raster(Matrix M) {
+        int n = M.getHeight();
+        int m = M.getWidth();
         // ensures n is a power of k even if the n from the input is not
         this.original_n = n;
         this.original_m = m;
@@ -118,7 +119,7 @@ public class K2Raster {
         return this.n;
     }
 
-    private static int[] Build(int[][] M, int n, int original_n, int original_m, int level, int row, int column,
+    private static int[] Build(Matrix M, int n, int original_n, int original_m, int level, int row, int column,
             List<BitMap> T,
             List<ArrayList<Integer>> Vmin, List<ArrayList<Integer>> Vmax, int[] pmax, int[] pmin,
             List<ArrayList<Integer>> parents, int parent) {
@@ -132,11 +133,8 @@ public class K2Raster {
                 int child = pmax[level];
                 if (lastlevel) {
                     int matrix_value;
-                    if (row + i >= original_n || column + j >= original_m) {
-                        matrix_value = 0;
-                    } else {
-                        matrix_value = M[row + i][column + j];
-                    }
+                    matrix_value = M.get(row + i,column + j);
+
                     if (min > matrix_value) {
                         min = matrix_value;
                     }
@@ -178,7 +176,7 @@ public class K2Raster {
 
         if (min == max) {
             pmax[level] = pmax[level] - k * k;
-            pmin[level - 1] = pmin[level - 1] - 1; // actual real improvement of the K^2 Raster data-structure 😱
+            // pmin[level - 1] = pmin[level - 1] - 1; // actual real improvement of the K^2 Raster data-structure 😱
             T.get(level).setSize(pmax[level]);
         }
 
