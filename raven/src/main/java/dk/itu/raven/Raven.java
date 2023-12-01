@@ -44,7 +44,7 @@ public class Raven {
     }
 
     public static void main(String[] args) {
-        Matrix M = generateRandom(1000, 1000, 10);
+        Matrix M = generateRandom(4000, 4000, 10);
         // System.out.println("done building matrix");
         long start = System.currentTimeMillis();
         K2Raster K2 = new K2Raster(M);
@@ -57,7 +57,7 @@ public class Raven {
             System.out.println(i);
             for (int j = 0; j < 1000; j++) {
                 if (M.get(i, j) != K2.getCell(i, j)) {
-                    System.out.println(M.get(i, j) + " != " + K2.getCell(i, j) + ", i: " + i + ", j: " + j);
+                    // System.out.println(M.get(i, j) + " != " + K2.getCell(i, j) + ", i: " + i + ", j: " + j);
                     // System.out.println(M.get(i, j) + " != " + K2.getWindow(i, i, j, j)[0] + ", i: " + i + ", j: " + j);
                 }
             }

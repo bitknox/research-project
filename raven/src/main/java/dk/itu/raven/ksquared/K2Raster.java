@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import dk.itu.raven.util.BitMap;
+import dk.itu.raven.util.GoodArrayList;
 import dk.itu.raven.util.matrix.Matrix;
 
 public class K2Raster {
@@ -41,24 +42,24 @@ public class K2Raster {
         
         int maxLevel = 1 + (int) Math.ceil(Math.log(Math.max(n, m)) / Math.log(k));
         List<BitMap> T = new ArrayList<>(maxLevel);
-        List<ArrayList<Integer>> Vmax = new ArrayList<ArrayList<Integer>>(maxLevel);
-        List<ArrayList<Integer>> Vmin = new ArrayList<ArrayList<Integer>>(maxLevel);
+        List<GoodArrayList<Integer>> Vmax = new ArrayList<GoodArrayList<Integer>>(maxLevel);
+        List<GoodArrayList<Integer>> Vmin = new ArrayList<GoodArrayList<Integer>>(maxLevel);
+        List<GoodArrayList<Integer>> parent = new ArrayList<>(maxLevel);
         int pmax[] = new int[maxLevel];
         int pmin[] = new int[maxLevel];
-        List<ArrayList<Integer>> parent = new ArrayList<>(maxLevel);
         for (int i = 0; i < maxLevel; i++) {
             T.add(new BitMap(40));
-            Vmax.add(new ArrayList<>());
-            Vmin.add(new ArrayList<>());
-            parent.add(new ArrayList<>());
+            Vmax.add(new GoodArrayList<>());
+            Vmin.add(new GoodArrayList<>());
+            parent.add(new GoodArrayList<>());
         }
         // System.out.println("started Build");
         int[] res = Build(M, this.n, original_n, original_m, 1, 0, 0, T, Vmin, Vmax, pmax, pmin, parent, 0);
 
         // System.out.println("done with Build");
 
-        Vmax.get(0).add(res[0]);
-        Vmin.get(0).add(res[1]);
+        Vmax.get(0).set(0, res[0]);
+        Vmin.get(0).set(0, res[1]);
         maxval = res[0];
 
         int size_max = 0;
@@ -137,8 +138,8 @@ public class K2Raster {
 
     private static int[] Build(Matrix M, int n, int original_n, int original_m, int level, int row, int column,
             List<BitMap> T,
-            List<ArrayList<Integer>> Vmin, List<ArrayList<Integer>> Vmax, int[] pmax, int[] pmin,
-            List<ArrayList<Integer>> parents, int parent) {
+            List<GoodArrayList<Integer>> Vmin, List<GoodArrayList<Integer>> Vmax, int[] pmax, int[] pmin,
+            List<GoodArrayList<Integer>> parents, int parent) {
         num++;
         int min, max;
         min = Integer.MAX_VALUE;
@@ -158,9 +159,9 @@ public class K2Raster {
                     if (max < matrix_value) {
                         max = matrix_value;
                     }
-                    Vmax.get(level).add(child, matrix_value);
+                    Vmax.get(level).set(child, matrix_value);
                     T.get(level).unset(child);
-                    parents.get(level).add(child, parent);
+                    parents.get(level).set(child, parent);
                     pmax[level]++;
                 } else {
                     int[] res = Build(M, nKths, original_n, original_m, level + 1, row + i * nKths, column + j * nKths,
@@ -169,17 +170,17 @@ public class K2Raster {
                             T.get(level).size());
                     int childMax = res[0];
                     int childMin = res[1];
-                    Vmax.get(level).add(child, childMax);
+                    Vmax.get(level).set(child, childMax);
                     if (childMin != childMax) {
-                        Vmin.get(level).add(pmin[level], childMin);
+                        Vmin.get(level).set(pmin[level], childMin);
                         pmin[level]++;
                         T.get(level).set(child);
                     } else {
-                        Vmin.get(level).add(pmin[level], childMin);
+                        Vmin.get(level).set(pmin[level], childMin);
                         pmin[level]++;
                         T.get(level).unset(child);
                     }
-                    parents.get(level).add(child, parent);
+                    parents.get(level).set(child, parent);
                     pmax[level]++;
                     if (min > childMin) {
                         min = childMin;
