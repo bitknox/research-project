@@ -65,7 +65,7 @@ public class BitRank {
         int aux = (i / this.s) * (this.factor);
         for (a = aux; a < i / W; a++)
             resp += popcount(this.data[a]);
-        resp += popcount(this.data[i / W] & ((1 << (i & mask31)) - 1));
+        resp += popcount(this.data[i / W] & ((1 << (i & mask31)) - 1)); // safe
         return resp;
     }
 }

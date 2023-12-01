@@ -8,11 +8,15 @@ import dk.itu.raven.util.matrix.Matrix;
 
 public class K2Raster {
     public static final int k = 2;
+    public static int num = 0;
 
     private int maxval;
     public BitMap Tree;
     public DAC LMax;
     public DAC LMin;
+    // public int[] LMax;
+    // public int[] LMin;
+
     private int n;
     private int[] prefixsum;
     private int original_n, original_m;
@@ -34,7 +38,7 @@ public class K2Raster {
             real_n *= k;
         }
         this.n = real_n;
-
+        
         int maxLevel = 1 + (int) Math.ceil(Math.log(Math.max(n, m)) / Math.log(k));
         List<BitMap> T = new ArrayList<>(maxLevel);
         List<ArrayList<Integer>> Vmax = new ArrayList<ArrayList<Integer>>(maxLevel);
@@ -48,7 +52,10 @@ public class K2Raster {
             Vmin.add(new ArrayList<>());
             parent.add(new ArrayList<>());
         }
+        // System.out.println("started Build");
         int[] res = Build(M, this.n, original_n, original_m, 1, 0, 0, T, Vmin, Vmax, pmax, pmin, parent, 0);
+
+        // System.out.println("done with Build");
 
         Vmax.get(0).add(res[0]);
         Vmin.get(0).add(res[1]);
@@ -64,7 +71,7 @@ public class K2Raster {
         int[] LMaxList = new int[size_max];
         int[] LMinList = new int[size_min];
 
-        Tree = new BitMap(size_max);
+        Tree = new BitMap(Math.max(1,size_max));
         int bitmapIndex = 0;
 
         for (int i = 0; i < maxLevel - 1; i++) {
@@ -79,6 +86,8 @@ public class K2Raster {
 
         if (res[0] != res[1]) {
             Tree.set(0);
+        } else {
+            Tree.unset(0);
         }
 
         prefixsum = new int[Tree.size()];
@@ -97,8 +106,15 @@ public class K2Raster {
             }
         }
 
+        // System.out.println("a");
+
+        // System.out.println(LMaxList.length);
+        // for (int i : LMaxList) System.out.print(i + " ");
+
         LMax = new DAC(LMaxList);
         LMin = new DAC(LMinList);
+        // LMax = LMaxList;
+        // LMin = LMinList;
     }
     
     public int[] getChildren(int index) {
@@ -123,6 +139,7 @@ public class K2Raster {
             List<BitMap> T,
             List<ArrayList<Integer>> Vmin, List<ArrayList<Integer>> Vmax, int[] pmax, int[] pmin,
             List<ArrayList<Integer>> parents, int parent) {
+        num++;
         int min, max;
         min = Integer.MAX_VALUE;
         max = 0;
@@ -176,7 +193,7 @@ public class K2Raster {
 
         if (min == max) {
             pmax[level] = pmax[level] - k * k;
-            // pmin[level - 1] = pmin[level - 1] - 1; // actual real improvement of the K^2 Raster data-structure 😱
+            // pmin[level - 1] = pmin[level - 1] - 1; // actual fake improvement of the K^2 Raster data-structure 😱
             T.get(level).setSize(pmax[level]);
         }
 
@@ -197,7 +214,7 @@ public class K2Raster {
         int nKths = (n / k);
         z = this.Tree.rank(z) * k * k;
         z = z + (r / nKths) * k + (c / nKths);
-        int val = LMax.accessFT(z + 1); // 😡
+        int val = LMax.accessFT(z); // 😡
         maxval = maxval - val;
         if (z >= Tree.size() || Tree.getOrZero(z + 1) == 0) // 😡
             return maxval;
@@ -246,7 +263,8 @@ public class K2Raster {
                     c2p = nKths - 1;
 
                 zp = z + i * k + j;
-                maxvalp = maxval - LMax.accessFT(zp + 1);
+                // maxvalp = maxval - LMax[zp];
+                maxvalp = maxval - LMax.accessFT(zp);
                 if (zp + 1 >= Tree.size() || Tree.getOrZero(zp + 1) == 0) {
                     int times = ((r2p - r1p) + 1) * ((c2p - c1p) + 1);
                     for (int l = 0; l < times; l++) {

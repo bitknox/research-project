@@ -7,7 +7,7 @@ public abstract class Matrix {
         this.height = height;
     }
     public int get(int r, int c) {
-        if (r < 0 || r >= height || c < 0 || c >= width) return 0;
+        if (r < 0 || r >= width || c < 0 || c >= height) return 0;
         return getWithinRange(r, c);
     }
 

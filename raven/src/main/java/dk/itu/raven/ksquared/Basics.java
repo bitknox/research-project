@@ -31,17 +31,26 @@ public abstract class Basics {
                 + __popcount_tab[(x >> 24) & 0xff];
     }
 
-    public static short bitshiftc(short shiftBy) {
+    public static short bitShiftLeftC(short shiftBy) {
         if (shiftBy >= 32) return 0;
         return (short) (1 << shiftBy);
     }
+    public static int bitShiftLeftC(int num, int shiftBy) {
+        if (shiftBy >= 32) return 0;
+        return (num << shiftBy);
+    }
+    
+    public static int bitShiftRightC(int num, int shiftBy) {
+        if (shiftBy >= 32) return 0;
+        return (num >> shiftBy);
+    }
 
     public static void bitset(int[] e, int p) {
-        e[(p) / W] |= (1 << ((p) % W));
+        e[(p) / W] |= bitShiftLeftC(1, (p) % W);
     }
 
     public static int bitget(int[] e, int p) {
-        return (e[(p) / W] >> ((p) % W)) & 1;
+        return bitShiftRightC(e[(p) / W], ((p) % W)) & 1;
     }
 
     public static int bitread(int[] e, int p, int len) {
@@ -49,14 +58,14 @@ public abstract class Basics {
         int answ;
         idx += p / W;
         p %= W;
-        answ = e[idx] >> p;
+        answ = bitShiftRightC(e[idx], p); 
         if (len == W) {
             if (p != 0)
-                answ |= e[idx + 1] << (W - p);
+                answ |= bitShiftLeftC(e[idx + 1],(W - p));
         } else {
             if (p + len > W)
-                answ |= e[idx + 1] << (W - p);
-            answ &= (1 << len) - 1;
+                answ |= bitShiftLeftC(e[idx + 1],(W - p));
+            answ &= bitShiftLeftC(1,len) - 1;
         }
         return answ;
     }
@@ -66,20 +75,20 @@ public abstract class Basics {
         idx += p / W;
         p %= W;
         if (len == W) {
-            e[idx] |= (e[idx] & ((1 << p) - 1)) | (s << p);
+            e[idx] |= (e[idx] & (bitShiftLeftC(1,p) - 1)) | bitShiftLeftC(s,p);
             if (p == 0)
                 return;
             idx++;
-            e[idx] = (e[idx] & ~((1 << p) - 1)) | (s >> (W - p));
+            e[idx] = (e[idx] & ~(bitShiftLeftC(1,p) - 1)) | bitShiftRightC(s,W-p);
         } else {
             if (p + len <= W) {
-                e[idx] = (e[idx] & ~(((1 << len) - 1) << p)) | (s << p);
+                e[idx] = (e[idx] & ~bitShiftLeftC((bitShiftLeftC(1,len) - 1), p)) | bitShiftLeftC(s,p);
                 return;
             }
-            e[idx] = (e[idx] & ((1 << p) - 1)) | (s << p);
+            e[idx] = (e[idx] & (bitShiftLeftC(1,p) - 1)) | (bitShiftLeftC(s, p));
             idx++;
             len -= W - p;
-            e[idx] = (e[idx] & ~((1 << len) - 1)) | (s >> (W - p));
+            e[idx] = (e[idx] & ~(bitShiftLeftC(1, len) - 1)) | bitShiftRightC(s, W - p); 
         }
     }
 }

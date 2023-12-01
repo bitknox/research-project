@@ -36,6 +36,7 @@ public class DAC {
                 maxInt = list[i];
     
         int nBits = bits(maxInt)-1;
+        // if (nBits == -1) nBits++;
 
         int tamAux = nBits+2;
         
@@ -56,8 +57,8 @@ public class DAC {
         int acumValue = 0;
         acumFreq[0]=0;	
         int cntb = 1;
-        for(i=0;i<maxInt+1;i++){
-            if(i==(1<<cntb)){
+        for(i=0;i<maxInt+1;i++) {
+            if(i==(Basics.bitShiftLeftC(1, cntb))) {
                 acumFreq[cntb]=acumValue;
                 cntb++;
             }
@@ -68,9 +69,7 @@ public class DAC {
             
         acumFreq[cntb]=listLength;
         
-    
         long[] s = new long[nBits+1];
-    
         int[] l = new int[nBits+1];
         int[] b = new int[nBits+1];
     
@@ -121,48 +120,10 @@ public class DAC {
         }
         
         return kvalues;
-    
-        
-    }
-
-    private static short[] Optimize(int[] cf) {
-        int m = cf.length - 1;
-        int[] s = new int[m + 1];
-        int[] l = new int[m + 1];
-        int[] b = new int[m + 1];
-
-        for (int t = m; t >= 0; t--) {
-            int minSize = Integer.MAX_VALUE;
-            int minPos = m;
-            for (int i = t + 1; i <= m; i++) {
-                int currentSize = s[i] + cf[t] * ((i - t) + (1 + epsilon));
-                if (minSize > currentSize) {
-                    minSize = currentSize;
-                    minPos = i;
-                }
-            }
-            if (minSize < cf[t] * ((m + 1) - t)) {
-                s[t] = minSize;
-                l[t] = l[minPos] + 1;
-                b[t] = minPos - t;
-            } else {
-                s[t] = cf[t] * ((m + 1) - t);
-                l[t] = 1;
-                b[t] = (m + 1) - t;
-            }
-        }
-        int L = l[0];
-        int t = 0;
-        short[] result = new short[L];
-        for (int k = 1; k <= L; k++) {
-            result[k - 1] = (short) b[t]; // unsafe cast
-            t = t + b[t];
-        }
-
-        return result;
     }
 
     public DAC(int[] list) {
+        
         int listLength = list.length;
         int[] levelSizeAux;
         int[] cont;
@@ -171,6 +132,7 @@ public class DAC {
         short[] kvalues;
 
         this.listLength = listLength;
+        // if (listLength == 0) return;
         int i;
         int j, k;
         int value, newvalue;
@@ -189,9 +151,9 @@ public class DAC {
         do {
             oldval = newval;
             if (i >= nkvalues) {
-                kval =  bitshiftc(kvalues[nkvalues - 1]);
+                kval =  bitShiftLeftC(kvalues[nkvalues - 1]);
             } else {
-                kval = bitshiftc(kvalues[i]);
+                kval = bitShiftLeftC(kvalues[i]);
             }
 
             multval *= kval;
@@ -212,9 +174,9 @@ public class DAC {
         for (i = 0; i < this.tamtablebase; i++) {
             oldval = newval;
             if (i >= nkvalues) {
-                kval =  bitshiftc(kvalues[nkvalues - 1]);
+                kval = bitShiftLeftC(kvalues[nkvalues - 1]);
             } else {
-                kval = bitshiftc(kvalues[i]);
+                kval = bitShiftLeftC(kvalues[i]);
             }
             multval *= kval;
             newval = oldval + multval;
@@ -247,10 +209,10 @@ public class DAC {
 
         for (i = 0; i < this.nLevels; i++) {
             if (i >= nkvalues) {
-                this.base[i] = 1 << (kvalues[nkvalues - 1]);
+                this.base[i] = Basics.bitShiftLeftC(1, kvalues[nkvalues - 1]);
                 this.base_bits[i] = kvalues[nkvalues - 1];
             } else {
-                this.base[i] = 1 << (kvalues[i]);
+                this.base[i] = Basics.bitShiftLeftC(1, kvalues[i]);
                 this.base_bits[i] = kvalues[i];
             }
         }
@@ -353,7 +315,7 @@ public class DAC {
 
             rankini = this.bS.Rank(this.levelsIndex[j] + ini - 1) - this.rankLevels[j];
             ini = ini - rankini;
-            partialSum = partialSum + (readByte << mult);
+            partialSum = partialSum + Basics.bitShiftLeftC(readByte, mult);
 
             mult += this.base_bits[j];
             j++;
@@ -368,7 +330,7 @@ public class DAC {
             }
 
         }
-        partialSum = partialSum + (readByte << mult) + this.tablebase[j];
+        partialSum = partialSum + (Basics.bitShiftLeftC(readByte, mult)) + this.tablebase[j];
 
         return partialSum;
 

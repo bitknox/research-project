@@ -50,7 +50,8 @@ public class BitMap implements Iterator<Integer>, Iterable<Integer> {
     int currentIteratorIndex;
 
     public BitMap(int initialCapacity) {
-
+        if(initialCapacity <= 0) throw new IllegalArgumentException("initialCapacity must be positive");
+        
         int words = initialCapacity / 32;
 
         if (initialCapacity % 32 != 0) {
