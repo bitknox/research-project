@@ -66,12 +66,13 @@ public class RavenJoin {
 
 		// 1 on index i * rasterBounding.geetSize() + j if an intersection between a
 		// line of the polygon and the line y=j happens at point (i,j)
-		// BitMap hasIntersection = new BitMap(rasterBounding.getSize() * rasterBounding.getSize());
+		// BitMap hasIntersection = new BitMap(rasterBounding.getSize() *
+		// rasterBounding.getSize());
 		// hasIntersection.get(rasterBounding.getSize()*rasterBounding.getSize());
 		// 1 on index i if the left-most pixel of row i intersects the polygon, 0
 		// otherwise
 		// BitMap leftIncluded = new BitMap(rasterBounding.getSize());
-		List<BST<Integer,Integer>> intersections = new ArrayList<BST<Integer,Integer>>(rasterBounding.getSize());
+		List<BST<Integer, Integer>> intersections = new ArrayList<BST<Integer, Integer>>(rasterBounding.getSize());
 		for (int i = 0; i < rasterBounding.getSize(); i++) {
 			intersections.add(i, new BST<>());
 		}
@@ -98,16 +99,18 @@ public class RavenJoin {
 						int start = (int) Math.round(Math.min(old.x(), next.x())) - rasterBounding.getTopX();
 						int end = (int) Math.round(Math.max(old.x(), next.x())) - rasterBounding.getTopX();
 						for (int x = start; x <= end; x++) {
-							// hasIntersection.flip((y - rasterBounding.getTopY()) * rasterBounding.getSize() + x);
-							BST<Integer,Integer> bst = intersections.get(y - rasterBounding.getTopY());
+							// hasIntersection.flip((y - rasterBounding.getTopY()) *
+							// rasterBounding.getSize() + x);
+							BST<Integer, Integer> bst = intersections.get(y - rasterBounding.getTopY());
 							incrementSet(bst, x);
 						}
 					}
 				} else {
 					double x = -(b * y + c) / a;
 					int ix = (int) Math.round(x - rasterBounding.getTopX()); // TODO: maybe fix
-					// hasIntersection.flip((y - rasterBounding.getTopY()) * rasterBounding.getSize() + ix);
-					BST<Integer,Integer> bst = intersections.get(y - rasterBounding.getTopY());
+					// hasIntersection.flip((y - rasterBounding.getTopY()) *
+					// rasterBounding.getSize() + ix);
+					BST<Integer, Integer> bst = intersections.get(y - rasterBounding.getTopY());
 					incrementSet(bst, ix);
 				}
 			}
@@ -143,7 +146,7 @@ public class RavenJoin {
 		// }
 
 		for (int y = 0; y < rasterBounding.getSize(); y++) {
-			BST<Integer,Integer> bst = intersections.get(y);
+			BST<Integer, Integer> bst = intersections.get(y);
 			boolean inRange = false;
 			int start = 0;
 			for (int x : bst.keys()) {
@@ -171,8 +174,8 @@ public class RavenJoin {
 		// 'ExtractCellsPolygon'");
 	}
 
-	private void incrementSet (BST<Integer, Integer> bst, Integer key) {
-		Integer num = bst.get(key); 
+	private void incrementSet(BST<Integer, Integer> bst, Integer key) {
+		Integer num = bst.get(key);
 		if (num == null) {
 			bst.put(key, 1);
 		} else {

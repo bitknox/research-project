@@ -5,6 +5,7 @@ import java.util.List;
 
 import dk.itu.raven.util.BitMap;
 import dk.itu.raven.util.GoodArrayList;
+import dk.itu.raven.util.Pair;
 import dk.itu.raven.util.matrix.Matrix;
 
 public class K2Raster {
@@ -13,10 +14,10 @@ public class K2Raster {
 
     private int maxval;
     public BitMap Tree;
-    public DAC LMax;
-    public DAC LMin;
-    // public int[] LMax;
-    // public int[] LMin;
+    // public DAC LMax;
+    // public DAC LMin;
+    public int[] LMax;
+    public int[] LMin;
 
     private int n;
     private int[] prefixsum;
@@ -39,7 +40,7 @@ public class K2Raster {
             real_n *= k;
         }
         this.n = real_n;
-        
+
         int maxLevel = 1 + (int) Math.ceil(Math.log(Math.max(n, m)) / Math.log(k));
         List<BitMap> T = new ArrayList<>(maxLevel);
         List<GoodArrayList<Integer>> Vmax = new ArrayList<GoodArrayList<Integer>>(maxLevel);
@@ -72,7 +73,7 @@ public class K2Raster {
         int[] LMaxList = new int[size_max];
         int[] LMinList = new int[size_min];
 
-        Tree = new BitMap(Math.max(1,size_max));
+        Tree = new BitMap(Math.max(1, size_max));
         int bitmapIndex = 0;
 
         for (int i = 0; i < maxLevel - 1; i++) {
@@ -112,12 +113,12 @@ public class K2Raster {
         // System.out.println(LMaxList.length);
         // for (int i : LMaxList) System.out.print(i + " ");
 
-        LMax = new DAC(LMaxList);
-        LMin = new DAC(LMinList);
-        // LMax = LMaxList;
-        // LMin = LMinList;
+        // LMax = new DAC(LMaxList);
+        // LMin = new DAC(LMinList);
+        LMax = LMaxList;
+        LMin = LMinList;
     }
-    
+
     public int[] getChildren(int index) {
         System.out.println("index: " + index);
         if (Tree.getOrZero(index) == 0) {
@@ -151,7 +152,7 @@ public class K2Raster {
                 int child = pmax[level];
                 if (lastlevel) {
                     int matrix_value;
-                    matrix_value = M.get(row + i,column + j);
+                    matrix_value = M.get(row + i, column + j);
 
                     if (min > matrix_value) {
                         min = matrix_value;
@@ -194,7 +195,8 @@ public class K2Raster {
 
         if (min == max) {
             pmax[level] = pmax[level] - k * k;
-            // pmin[level - 1] = pmin[level - 1] - 1; // actual fake improvement of the K^2 Raster data-structure 😱
+            // pmin[level - 1] = pmin[level - 1] - 1; // actual fake improvement of the K^2
+            // Raster data-structure 😱
             T.get(level).setSize(pmax[level]);
         }
 
@@ -215,7 +217,7 @@ public class K2Raster {
         int nKths = (n / k);
         z = this.Tree.rank(z) * k * k;
         z = z + (r / nKths) * k + (c / nKths);
-        int val = LMax.accessFT(z); // 😡
+        int val = LMax[z]; // 😡
         maxval = maxval - val;
         if (z >= Tree.size() || Tree.getOrZero(z + 1) == 0) // 😡
             return maxval;
@@ -231,9 +233,16 @@ public class K2Raster {
         return getCell(this.n, r, c, -1, this.maxval);
     }
 
-    private void getWindow(int n, int r1, int r2, int c1, int c2, int z, int maxval, int[] out, IntPointer index) {
+    private void getWindow(int n, int r1, int r2, int c1, int c2, int z, int maxval, int[] out,
+            IntPointer index,
+            int level, List<Pair<Integer, Integer>> indexRanks) {
         int nKths = (n / k);
-        z = this.Tree.rank(z) * k * k;
+        Pair<Integer, Integer> indexRank = indexRanks.get(level);
+        int rank = (indexRank.second + this.Tree.rank(indexRank.first + 1, z));
+        indexRank.first = z;
+        indexRank.second = rank;
+        // Pair<Integer, Integer> ret = new Pair<>(z, rank);
+        z = rank * k * k;
         int initialI = r1 / nKths;
         int lastI = r2 / nKths;
         int initialJ = c1 / nKths;
@@ -265,14 +274,14 @@ public class K2Raster {
 
                 zp = z + i * k + j;
                 // maxvalp = maxval - LMax[zp];
-                maxvalp = maxval - LMax.accessFT(zp);
+                maxvalp = maxval - LMax[zp];
                 if (zp + 1 >= Tree.size() || Tree.getOrZero(zp + 1) == 0) {
                     int times = ((r2p - r1p) + 1) * ((c2p - c1p) + 1);
                     for (int l = 0; l < times; l++) {
                         out[index.index++] = maxvalp;
                     }
                 } else {
-                    getWindow(nKths, r1p, r2p, c1p, c2p, zp, maxvalp, out, index);
+                    getWindow(nKths, r1p, r2p, c1p, c2p, zp, maxvalp, out, index, level + 1, indexRanks);
                 }
 
             }
@@ -296,7 +305,12 @@ public class K2Raster {
                     + ") in matrix with size (" + original_n + ", " + original_m + ")");
         int returnSize = (r2 - r1 + 1) * (c2 - c1 + 1);
         int[] out = new int[returnSize];
-        getWindow(this.n, r1, r2, c1, c2, -1, this.maxval, out, new IntPointer());
+        int maxLevel = 1 + (int) Math.ceil(Math.log(n) / Math.log(k));
+        GoodArrayList<Pair<Integer, Integer>> indexRanks = new GoodArrayList<Pair<Integer, Integer>>(maxLevel);
+        for (int i = 0; i < maxLevel; i++) {
+            indexRanks.set(i, new Pair<>(-1, 0));
+        }
+        getWindow(this.n, r1, r2, c1, c2, -1, this.maxval, out, new IntPointer(), 0, indexRanks);
 
         return out;
     }

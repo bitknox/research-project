@@ -50,8 +50,9 @@ public class BitMap implements Iterator<Integer>, Iterable<Integer> {
     int currentIteratorIndex;
 
     public BitMap(int initialCapacity) {
-        if(initialCapacity <= 0) throw new IllegalArgumentException("initialCapacity must be positive");
-        
+        if (initialCapacity <= 0)
+            throw new IllegalArgumentException("initialCapacity must be positive");
+
         int words = initialCapacity / 32;
 
         if (initialCapacity % 32 != 0) {
@@ -65,13 +66,21 @@ public class BitMap implements Iterator<Integer>, Iterable<Integer> {
 
     /**
      * computes the rank of the bitmap up to an index {@code i}
+     * 
      * @param i
      * @return the number of 1's up to and including index {@code i}
      */
     public int rank(int i) {
-        if(i == -1) return 0;
+        return rank(0, i);
+    }
+
+    public int rank(int from, int to) {
+        // System.out.println("from: " + from + ", to: " + to + ", limitPos: " +
+        // limitPos);
+        if (to == -1)
+            return 0;
         int res = 0;
-        for (int j = 1; j <= i + 1; j++) { //😡
+        for (int j = from + 1; j <= to + 1; j++) { // 😡
             res += get(j);
         }
         return res;
