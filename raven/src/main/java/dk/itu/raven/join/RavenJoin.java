@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Stack;
 
 import com.github.davidmoten.rtree2.RTree;
+import com.github.davidmoten.rtree2.Entry;
 import com.github.davidmoten.rtree2.Leaf;
 import com.github.davidmoten.rtree2.Node;
 import com.github.davidmoten.rtree2.NonLeaf;
@@ -16,11 +17,11 @@ import com.github.davidmoten.rtree2.geometry.Rectangle;
 
 import dk.itu.raven.util.TreeExtensions;
 import dk.itu.raven.util.Tuple3;
+import dk.itu.raven.geometry.PixelRange;
+import dk.itu.raven.geometry.Polygon;
 import dk.itu.raven.ksquared.K2Raster;
 import dk.itu.raven.util.BST;
 import dk.itu.raven.util.Pair;
-import dk.itu.raven.util.PixelRange;
-import dk.itu.raven.util.Polygon;
 
 public class RavenJoin {
 	private enum OverlapType {
@@ -38,20 +39,27 @@ public class RavenJoin {
 		this.tree = tree;
 	}
 
-	// protected boolean pointInPolygon(Polygon polygon, int x, int y) {
-	// Point old = polygon.getFirst();
-	// int linesCrossed = 0;
-	// for (Point next : polygon) {
-	// double a = (next.y() - old.y());
-	// double b = (old.x() - next.x());
-	// double c = old.y() * (next.x() - old.x()) - (next.y() - old.y()) * old.x();
-	// double side = a*x+b*y-c;
-	// linesCrossed += (side < 0) ? 1 : 0;
-	// old = next;
-	// }
-
-	// return (linesCrossed % 2) == 1;
-	// }
+	protected Collection<PixelRange> ExtractCellsPolygonSimple(Polygon polygon, int pk, Square rasterBounding) {
+		Collection<PixelRange> ranges = new ArrayList<>();
+		Point old = polygon.getFirst();
+		// int linesCrossed = 0;
+		for (int x = rasterBounding.getTopX(); x < rasterBounding.getTopX() + rasterBounding.getSize(); x++) {
+			for (int y = rasterBounding.getTopY(); y < rasterBounding.getTopY() + rasterBounding.getSize(); y++) {
+				int toLeft = 0;
+				for (Point next : polygon) {
+					double a = (next.y() - old.y());
+					double b = (old.x() - next.x());
+					double c = a * old.x() + b * old.y();
+					toLeft += (a * x + b * y - c < 0) ? 1 : 0;
+					old = next;
+				}
+				if (toLeft % 2 == 1) {
+					ranges.add(new PixelRange(y, x, x));
+				}
+			}
+		}
+		return ranges;
+	}
 
 	/*
 	 * TODO:
@@ -80,33 +88,33 @@ public class RavenJoin {
 		// leftIncluded.setTo(0, pointInPolygon(polygon, rasterBounding.getTopX(),
 		// rasterBounding.getTopY())? 1 : 0);
 
-		// a line is of the form a*x + b*y + c = 0
+		// a line is of the form a*x + b*y = c
 		Point old = polygon.getFirst();
 		// int linesCrossed = 0;
 		for (Point next : polygon) {
 			double a = (next.y() - old.y());
 			double b = (old.x() - next.x());
-			double c = old.y() * (next.x() - old.x()) - (next.y() - old.y()) * old.x();
+			double c = a * old.x() + b * old.y();
 			// double side = a*x+b*y-c;
 			// by-c = 0
 			int miny = (int) Math.round(Math.min(old.y(), next.y()));
 			int maxy = (int) Math.round(Math.max(old.y(), next.y()));
-			for (int y = rasterBounding.getTopY(); y < rasterBounding.getTopY() + rasterBounding.getSize(); y++) {
-				if (y < miny || y > maxy)
-					continue;
-				if (a == 0.0) {
-					if (Math.round(b * y + c) == 0) {
+			for (int y = miny; y < maxy; y++) {
+				if (miny == maxy) {
+					if (Math.round(b * y - c) == 0) {
 						int start = (int) Math.round(Math.min(old.x(), next.x())) - rasterBounding.getTopX();
 						int end = (int) Math.round(Math.max(old.x(), next.x())) - rasterBounding.getTopX();
-						for (int x = start; x <= end; x++) {
-							// hasIntersection.flip((y - rasterBounding.getTopY()) *
-							// rasterBounding.getSize() + x);
-							BST<Integer, Integer> bst = intersections.get(y - rasterBounding.getTopY());
-							incrementSet(bst, x);
-						}
+						BST<Integer, Integer> bst = intersections.get(y - rasterBounding.getTopY());
+						incrementSet(bst, start);
+						incrementSet(bst, end);
 					}
 				} else {
-					double x = -(b * y + c) / a;
+					// a*x + b*y = c
+					double x = (c - b * y) / a;
+					// System.out.println("a: " + a + ", b: " + b + ", c: " + c + ", x: " + x + ",
+					// y: " + y);
+
+					assert x >= 0;
 					int ix = (int) Math.round(x - rasterBounding.getTopX()); // TODO: maybe fix
 					// hasIntersection.flip((y - rasterBounding.getTopY()) *
 					// rasterBounding.getSize() + ix);
@@ -128,50 +136,50 @@ public class RavenJoin {
 		// }
 
 		Collection<PixelRange> ranges = new ArrayList<>();
-		// for (int y = 0; y < rasterBounding.getSize(); y++) {
-		// boolean inRange = false;
-		// int start = 0;
-		// for (int x = 0; x < rasterBounding.getSize(); x++) {
-		// if (hasIntersection.isSet(y*rasterBounding.getSize()+x)) {
-		// if (inRange) {
-		// inRange = false;
-		// ranges.add(new PixelRange(y+rasterBounding.getTopY(),
-		// start+rasterBounding.getTopX(), x+rasterBounding.getTopX()));
-		// } else {
-		// inRange = true;
-		// start = x;
-		// }
-		// }
-		// }
-		// }
-
+		int firstCase = 0;
+		int firstCaseIntersections = 0;
+		int secondCase = 0;
+		int secondCaseIntersections = 0;
+		int x1 = Integer.MAX_VALUE, x2 = 0, y1 = Integer.MAX_VALUE, y2 = 0;
 		for (int y = 0; y < rasterBounding.getSize(); y++) {
 			BST<Integer, Integer> bst = intersections.get(y);
 			boolean inRange = false;
 			int start = 0;
 			for (int x : bst.keys()) {
-				if (bst.get(x) > 1) {
-					ranges.add(new PixelRange(y, x, x));
+				y1 = Math.min(y1, y);
+				y2 = Math.max(y2, y);
+				x1 = Math.min(x1, x);
+				x2 = Math.max(x2, x);
+				if (bst.get(x) % 2 == 0) {
+					firstCase++;
+					firstCaseIntersections += bst.get(x);
+					if (!inRange) {
+						x += rasterBounding.getTopX();
+						ranges.add(new PixelRange(y, x, x));
+						assert x >= 0;
+					}
 				} else {
+					secondCase++;
+					secondCaseIntersections += bst.get(x);
 					if (inRange) {
 						inRange = false;
 						ranges.add(new PixelRange(y + rasterBounding.getTopY(), start + rasterBounding.getTopX(),
 								x + rasterBounding.getTopX()));
+						assert (x + rasterBounding.getTopX() >= 0);
+						assert (start + rasterBounding.getTopX() >= 0);
 					} else {
 						inRange = true;
 						start = x;
 					}
 				}
-
-				// if (hasIntersection.isSet(y * rasterBounding.getSize() + x)) {
-				// }
 			}
 		}
+		System.out.println("rasterBounding: " + rasterBounding.getSize());
+		System.out.println("First Case: " + firstCase + ", " + firstCaseIntersections);
+		System.out.println("Second Case: " + secondCase + ", " + secondCaseIntersections);
+		// System.out.println(Geometries.rectangle(x1, y1, x2, y2));
 
-		// construct pixel ranges in linear time using the idea from the todo above
 		return ranges;
-		// throw new UnsupportedOperationException("Unimplemented method
-		// 'ExtractCellsPolygon'");
 	}
 
 	private void incrementSet(BST<Integer, Integer> bst, Integer key) {
@@ -183,25 +191,13 @@ public class RavenJoin {
 		}
 	}
 
-	public static void main(String[] args) {
-		List<Point> points = new ArrayList<>();
-		points.add(Geometries.point(0, 0));
-		points.add(Geometries.point(5, 5));
-		// points.add(Geometries.point(20, 0));
-		// points.add(Geometries.point(20, 30));
-		// points.add(Geometries.point(10, 15));
-		// points.add(Geometries.point(0, 30));
-		Polygon poly = new Polygon(points);
-
-		Square square = new Square(0, 0, 30);
-		RavenJoin join = new RavenJoin(null, null);
-		System.out.println(join.ExtractCellsPolygon(poly, 0, square).size());
-	}
-
 	// based loosely on:
 	// https://bitbucket.org/bdlabucr/beast/src/master/raptor/src/main/java/edu/ucr/cs/bdlab/raptor/Intersections.java
-	private Collection<PixelRange> ExtractCells(Leaf<String, Geometry> pr, int pk, Square rasterBounding) {
-		return ExtractCellsPolygon((Polygon) pr.geometry(), pk, rasterBounding);
+	private void ExtractCells(Leaf<String, Geometry> pr, int pk, Square rasterBounding,
+			List<Pair<Geometry, Collection<PixelRange>>> Def) {
+		for (Entry<String, Geometry> entry : ((Leaf<String, Geometry>) pr).entries()) {
+			Def.add(new Pair<>(entry.geometry(), ExtractCellsPolygon((Polygon) entry.geometry(), pk, rasterBounding)));
+		}
 	}
 
 	private void addDescendantsLeaves(NonLeaf<String, Geometry> pr, int pk, Square rasterBounding,
@@ -209,7 +205,7 @@ public class RavenJoin {
 		for (Node<String, Geometry> n : pr.children()) {
 			// I could not find a better way than this:
 			if (TreeExtensions.isLeaf(n)) {
-				Def.add(new Pair<>(n.geometry(), ExtractCells((Leaf<String, Geometry>) n, pk, rasterBounding)));
+				ExtractCells((Leaf<String, Geometry>) n, pk, rasterBounding, Def);
 			} else {
 				addDescendantsLeaves((NonLeaf<String, Geometry>) n, pk, rasterBounding, Def);
 			}
@@ -250,8 +246,7 @@ public class RavenJoin {
 			Tuple3<OverlapType, Integer, Square> checked = checkQuandrant(p.b, p.c, p.a.geometry().mbr());
 			if (checked.a == OverlapType.TotalOverlap) {
 				if (TreeExtensions.isLeaf(p.a)) {
-					Def.add(new Pair<>(p.a.geometry(),
-							ExtractCells((Leaf<String, Geometry>) p.a, checked.b, checked.c)));
+					ExtractCells((Leaf<String, Geometry>) p.a, checked.b, checked.c, Def);
 				} else {
 					addDescendantsLeaves((NonLeaf<String, Geometry>) p.a, checked.b, checked.c, Def);
 				}
@@ -261,6 +256,7 @@ public class RavenJoin {
 						S.push(new Tuple3<Node<String, Geometry>, Integer, Square>(c, checked.b, checked.c));
 					}
 				} else {
+					System.out.println("This should not happen");
 					// do checkMBR business
 				}
 			}

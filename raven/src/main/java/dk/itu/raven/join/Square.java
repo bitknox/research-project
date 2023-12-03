@@ -3,12 +3,14 @@ package dk.itu.raven.join;
 import com.github.davidmoten.rtree2.geometry.Geometries;
 import com.github.davidmoten.rtree2.geometry.Rectangle;
 
+import dk.itu.raven.geometry.PixelCoordinate;
+
 public class Square {
 	private int size;
-	private Point topLeft;
+	private PixelCoordinate topLeft;
 
 	public Square(int x, int y, int size) {
-		this.topLeft = new Point(x, y);
+		this.topLeft = new PixelCoordinate(x, y);
 		this.size = size;
 	}
 
@@ -16,14 +18,14 @@ public class Square {
 		return size;
 	}
 
-	public boolean contains(Point p) {
+	public boolean contains(PixelCoordinate p) {
 		return contains(p.x, p.y);
 	}
 
 	public boolean intersects(Square other) {
-		return contains(other.topLeft) || contains(new Point(other.topLeft.x + other.size, other.topLeft.y))
-				|| contains(new Point(other.topLeft.x, other.topLeft.y + other.size))
-				|| contains(new Point(other.topLeft.x + other.size, other.topLeft.y + other.size));
+		return contains(other.topLeft) || contains(new PixelCoordinate(other.topLeft.x + other.size, other.topLeft.y))
+				|| contains(new PixelCoordinate(other.topLeft.x, other.topLeft.y + other.size))
+				|| contains(new PixelCoordinate(other.topLeft.x + other.size, other.topLeft.y + other.size));
 	}
 
 	public boolean intersects(Rectangle rect) {
@@ -56,18 +58,9 @@ public class Square {
 	public int getTopX() {
 		return topLeft.x;
 	}
+
 	public int getTopY() {
 		return topLeft.y;
-	}
-
-	private class Point {
-		public int x;
-		public int y;
-
-		public Point(int x, int y) {
-			this.x = x;
-			this.y = y;
-		}
 	}
 
 }

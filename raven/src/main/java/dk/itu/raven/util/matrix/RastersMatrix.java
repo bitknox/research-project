@@ -4,8 +4,9 @@ import mil.nga.tiff.Rasters;
 
 public class RastersMatrix extends Matrix {
     private Rasters rasters;
+
     public RastersMatrix(Rasters rasters) {
-        super(rasters.getHeight(), rasters.getWidth());
+        super(rasters.getWidth(), rasters.getHeight());
         this.rasters = rasters;
     }
 
@@ -14,5 +15,5 @@ public class RastersMatrix extends Matrix {
         // System.out.println(rasters.getPixel(r, c)[0]);
         return rasters.getPixel(r, c)[0].intValue();
     }
-    
+
 }

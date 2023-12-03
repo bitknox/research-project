@@ -1,9 +1,10 @@
 package dk.itu.raven.join;
 
-//junit test for the square class
-import static org.junit.Assert.*;
+import org.junit.jupiter.api.Test;
 
-import org.junit.Test;
+//junit test for the square class
+
+import static org.junit.jupiter.api.Assertions.*;
 
 import com.github.davidmoten.rtree2.geometry.Geometries;
 import com.github.davidmoten.rtree2.geometry.Rectangle;
