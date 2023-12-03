@@ -13,12 +13,12 @@ public class K2Raster {
     public static int num = 0;
 
     private int maxval;
+    private int minval;
     public BitMap Tree;
     // public DAC LMax;
     // public DAC LMin;
     private int[] LMax;
     private int[] LMin;
-    private int rMin, rMax;
 
     private int n;
     private int[] prefixsum;
@@ -58,10 +58,10 @@ public class K2Raster {
         }
 
         int[] res = Build(M, this.n, original_n, original_m, 1, 0, 0, T, Vmin, Vmax, pmax, pmin, parent, 0);
-        rMax = res[0];
-        rMin = res[1];
-        Vmax.get(0).set(0, rMax);
-        Vmin.get(0).set(0, rMin);
+        maxval = res[0];
+        minval = res[1];
+        Vmax.get(0).set(0, maxval);
+        Vmin.get(0).set(0, minval);
 
         int size_max = 0;
         int size_min = 0;
@@ -86,7 +86,7 @@ public class K2Raster {
             }
         }
 
-        if (rMax != rMin) {
+        if (maxval != minval) {
             Tree.set(0);
         } else {
             Tree.unset(0);
@@ -121,7 +121,7 @@ public class K2Raster {
      *         and the second element is the maximum value
      */
     public int[] getValueRange() {
-        return new int[] { rMin, rMax };
+        return new int[] { minval, maxval };
     }
 
     public int getLMax(int index) {
@@ -301,7 +301,7 @@ public class K2Raster {
                 if (zp + 1 >= Tree.size() || Tree.getOrZero(zp + 1) == 0) {
                     int times = ((r2p - r1p) + 1) * ((c2p - c1p) + 1);
                     for (int l = 0; l < times; l++) {
-                        out[index.index++] = maxvalp;
+                        out[index.val++] = maxvalp;
                     }
                 } else {
                     getWindow(nKths, r1p, r2p, c1p, c2p, zp, maxvalp, out, index, level + 1, indexRanks);
@@ -334,6 +334,108 @@ public class K2Raster {
             indexRanks.set(i, new Pair<>(-1, 0));
         }
         getWindow(this.n, r1, r2, c1, c2, -1, this.maxval, out, new IntPointer(), 0, indexRanks);
+
+        return out;
+    }
+
+    private void searchValuesInWindow(int n, int r1, int r2, int c1, int c2, int z, int maxval, int minval, int vb,
+            int ve, int[] out,
+            IntPointer index,
+            int level, List<Pair<Integer, Integer>> indexRanks) {
+        int nKths = (n / k);
+        Pair<Integer, Integer> indexRank = indexRanks.get(level);
+        int rank = (indexRank.second + this.Tree.rank(indexRank.first + 1, z));
+        indexRank.first = z;
+        indexRank.second = rank;
+
+        z = rank * k * k;
+        int initialI = r1 / nKths;
+        int lastI = r2 / nKths;
+        int initialJ = c1 / nKths;
+        int lastJ = c2 / nKths;
+
+        int r1p, r2p, c1p, c2p, maxvalp, minvalp, zp;
+
+        for (int i = initialI; i <= lastI; i++) {
+            if (i == initialI)
+                r1p = r1 % nKths;
+            else
+                r1p = 0;
+
+            if (i == lastI)
+                r2p = r2 % nKths;
+            else
+                r2p = nKths - 1;
+
+            for (int j = initialJ; j <= lastJ; j++) {
+                if (j == initialJ)
+                    c1p = c1 % nKths;
+                else
+                    c1p = 0;
+
+                if (j == lastJ)
+                    c2p = c2 % nKths;
+                else
+                    c2p = nKths - 1;
+
+                zp = z + i * k + j;
+
+                maxvalp = maxval - LMax[zp];
+                if (zp + 1 >= Tree.size() || Tree.getOrZero(zp + 1) == 0) {
+                    minvalp = maxvalp;
+                    if (minvalp >= vb && maxvalp <= ve) {
+
+                        /* all cells meet the condition in this branch */
+                        // int times = ((r2p - r1p) + 1) * ((c2p - c1p) + 1);
+                        // for (int l = 0; l < times; l++) {
+                        // out[index.index++] = maxvalp;
+                        // }
+                    }
+                } else {
+                    minvalp = LMin[this.Tree.rank(zp)];
+                    if (minvalp >= vb && maxvalp <= ve) {
+                        /* all cells meet the condition in this branch */
+                        // int times = ((r2p - r1p) + 1) * ((c2p - c1p) + 1);
+                        // for (int l = 0; l < times; l++) {
+                        // out[index.index++] = maxvalp;
+                        // }
+                    }
+                    if (minvalp < vb && maxvalp > ve) {
+                        searchValuesInWindow(nKths, r1p, r2p, c1p, c2p, zp, maxvalp, minvalp, vb, ve, out, index,
+                                level + 1,
+                                indexRanks);
+                    }
+                }
+
+            }
+        }
+    }
+
+    /**
+     * Reads data from a window of the matrix given by the two points
+     * {@code (r1,c1)} and {@code (r2,c2)}
+     * 
+     * @param r1 row number for the top left corner of window
+     * @param r2 row number for the bottom right corner of window
+     * @param c1 column number for the top left corner of window
+     * @param c2 column number for the bottom right corner of window
+     * @return a window of the matrix
+     */
+    public int[] searchValuesInWindow(int r1, int r2, int c1, int c2, int thresholdLow, int thresholdHigh) {
+        if (r1 < 0 || r1 >= original_n || r2 < 0 || r2 >= original_n || c1 < 0 || c1 >= original_m || c2 < 0
+                || c2 >= original_m)
+            throw new IndexOutOfBoundsException("looked up window (" + r1 + ", " + c1 + ", " + r2 + ", " + c2
+                    + ") in matrix with size (" + original_n + ", " + original_m + ")");
+        int returnSize = (r2 - r1 + 1) * (c2 - c1 + 1); // can be smaller.
+        int[] out = new int[returnSize];
+        int maxLevel = 1 + (int) Math.ceil(Math.log(n) / Math.log(k));
+        GoodArrayList<Pair<Integer, Integer>> indexRanks = new GoodArrayList<Pair<Integer, Integer>>(maxLevel);
+        for (int i = 0; i < maxLevel; i++) {
+            indexRanks.set(i, new Pair<>(-1, 0));
+        }
+        searchValuesInWindow(this.n, r1, r2, c1, c2, -1, this.maxval, this.minval, thresholdLow, thresholdHigh, out,
+                new IntPointer(), 0,
+                indexRanks);
 
         return out;
     }

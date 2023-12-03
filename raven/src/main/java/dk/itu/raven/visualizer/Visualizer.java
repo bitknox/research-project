@@ -67,17 +67,8 @@ public class Visualizer {
 			}
 			Polygon poly = (Polygon) feature;
 			Point old = poly.getFirst();
-			Point start = old;
-			boolean skip = false;
 			for (Point next : poly) {
-				if (!skip) {
-					vectorGraphics.drawLine((int) old.x(), (int) old.y(), (int) next.x(), (int) next.y());
-				} else {
-					skip = false;
-				}
-				if (start.x() == next.x() && start.y() == next.y()) {
-					skip = true;
-				}
+				vectorGraphics.drawLine((int) old.x(), (int) old.y(), (int) next.x(), (int) next.y());
 				old = next;
 			}
 		}

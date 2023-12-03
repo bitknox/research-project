@@ -40,6 +40,11 @@ public class Square {
 		return contains(rect.x1(), rect.y1()) && contains(rect.x2(), rect.y2());
 	}
 
+	public boolean isContained(Rectangle rect) {
+		return rect.x1() <= topLeft.x && rect.y1() <= topLeft.y && rect.x2() >= topLeft.x + size
+				&& rect.y2() >= topLeft.y + size;
+	}
+
 	public Square[] split() {
 		Square[] squares = new Square[4];
 		squares[0] = new Square(topLeft.x, topLeft.y, size / 2);

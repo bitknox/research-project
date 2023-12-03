@@ -16,6 +16,7 @@ import com.github.davidmoten.rtree2.geometry.Rectangle;
 
 import dk.itu.raven.util.TreeExtensions;
 import dk.itu.raven.util.Tuple3;
+import dk.itu.raven.util.Tuple5;
 import dk.itu.raven.geometry.PixelRange;
 import dk.itu.raven.geometry.Polygon;
 import dk.itu.raven.ksquared.K2Raster;
@@ -23,9 +24,14 @@ import dk.itu.raven.util.BST;
 import dk.itu.raven.util.Pair;
 
 public class RavenJoin {
-	private enum OverlapType {
+	private enum QuadOverlapType {
 		TotalOverlap,
 		PossibleOverlap,
+		NoOverlap;
+	}
+
+	private enum MBROverlapType {
+		TotalOverlap,
 		PartialOverlap,
 		NoOverlap;
 	}
@@ -38,33 +44,11 @@ public class RavenJoin {
 		this.tree = tree;
 	}
 
-	protected Collection<PixelRange> ExtractCellsPolygonSimple(Polygon polygon, int pk, Square rasterBounding) {
-		Collection<PixelRange> ranges = new ArrayList<>();
-		Point old = polygon.getFirst();
-		for (int x = rasterBounding.getTopX(); x < rasterBounding.getTopX() + rasterBounding.getSize(); x++) {
-			for (int y = rasterBounding.getTopY(); y < rasterBounding.getTopY() + rasterBounding.getSize(); y++) {
-				int toLeft = 0;
-				for (Point next : polygon) {
-					double a = (next.y() - old.y());
-					double b = (old.x() - next.x());
-					double c = a * old.x() + b * old.y();
-					toLeft += (a * x + b * y - c < 0) ? 1 : 0;
-					old = next;
-				}
-				if (toLeft % 2 == 1) {
-					ranges.add(new PixelRange(y, x, x));
-				}
-			}
-		}
-		return ranges;
-	}
-
 	/*
 	 * instead of sorting indices, store a boolean array of whether there is an
 	 * intersection at a given x coordinate (rounded to nearest integer).
 	 * Then do a linear pass over this array to store the indices in sorted order.
 	 */
-
 	protected Collection<PixelRange> ExtractCellsPolygon(Polygon polygon, int pk, Square rasterBounding) {
 		// 1 on index i * rasterBounding.geetSize() + j if an intersection between a
 		// line of the polygon and the line y=j happens at point (i,j)
@@ -152,25 +136,25 @@ public class RavenJoin {
 	// based loosely on:
 	// https://bitbucket.org/bdlabucr/beast/src/master/raptor/src/main/java/edu/ucr/cs/bdlab/raptor/Intersections.java
 	private void ExtractCells(Leaf<String, Geometry> pr, int pk, Square rasterBounding,
-			List<Pair<Geometry, Collection<PixelRange>>> Def) {
+			List<Pair<Geometry, Collection<PixelRange>>> def) {
 		for (Entry<String, Geometry> entry : ((Leaf<String, Geometry>) pr).entries()) {
-			Def.add(new Pair<>(entry.geometry(), ExtractCellsPolygon((Polygon) entry.geometry(), pk, rasterBounding)));
+			def.add(new Pair<>(entry.geometry(), ExtractCellsPolygon((Polygon) entry.geometry(), pk, rasterBounding)));
 		}
 	}
 
 	private void addDescendantsLeaves(NonLeaf<String, Geometry> pr, int pk, Square rasterBounding,
-			List<Pair<Geometry, Collection<PixelRange>>> Def) {
+			List<Pair<Geometry, Collection<PixelRange>>> def) {
 		for (Node<String, Geometry> n : pr.children()) {
 			// I could not find a better way than this:
 			if (TreeExtensions.isLeaf(n)) {
-				ExtractCells((Leaf<String, Geometry>) n, pk, rasterBounding, Def);
+				ExtractCells((Leaf<String, Geometry>) n, pk, rasterBounding, def);
 			} else {
-				addDescendantsLeaves((NonLeaf<String, Geometry>) n, pk, rasterBounding, Def);
+				addDescendantsLeaves((NonLeaf<String, Geometry>) n, pk, rasterBounding, def);
 			}
 		}
 	}
 
-	private Tuple3<OverlapType, Integer, Square> checkQuadrant(int k2Index, Square rasterBounding,
+	private Tuple5<QuadOverlapType, Integer, Square, Integer, Integer> checkQuadrant(int k2Index, Square rasterBounding,
 			Rectangle bounding, int lo, int hi, int min, int max) {
 		int[] children = k2Raster.getChildren(k2Index);
 		int childSize = rasterBounding.getSize() / K2Raster.k;
@@ -182,24 +166,56 @@ public class RavenJoin {
 						max - k2Raster.getLMax(child));
 			}
 		}
-		boolean contained = rasterBounding.contains(bounding);
-		if (contained && lo <= min && hi >= max) {
-			return new Tuple3<>(OverlapType.TotalOverlap, k2Index, rasterBounding);
-		} else if (contained) {
-			return new Tuple3<>(OverlapType.PartialOverlap, k2Index, rasterBounding);
+
+		if (lo <= min && hi >= max) {
+			return new Tuple5<>(QuadOverlapType.TotalOverlap, k2Index, rasterBounding, min, max);
+		} else if (min > hi || max < lo) {
+			return new Tuple5<>(QuadOverlapType.NoOverlap, k2Index, rasterBounding, min, max);
 		} else {
-			return new Tuple3<>(OverlapType.NoOverlap, k2Index, rasterBounding);
+			return new Tuple5<>(QuadOverlapType.PossibleOverlap, k2Index, rasterBounding, min, max);
+		}
+	}
+
+	private MBROverlapType checkMBR(int k2Index, Square rasterBounding, Rectangle bounding,
+			int lo, int hi, int min, int max) {
+		int minSeen = Integer.MAX_VALUE;
+		int maxSeen = Integer.MIN_VALUE;
+		Stack<Tuple3<Integer, Integer, Integer>> k2Nodes = new Stack<>();
+		k2Nodes.push(new Tuple3<>(k2Index, min, max));
+		while (!k2Nodes.empty()) {
+			Tuple3<Integer, Integer, Integer> node = k2Nodes.pop();
+			int[] children = k2Raster.getChildren(node.a);
+			int childSize = rasterBounding.getSize() / K2Raster.k;
+			for (int i = 0; i < children.length; i++) {
+				int child = children[i];
+				Square childRasterBounding = rasterBounding.getChildSquare(childSize, i, K2Raster.k);
+				if (childRasterBounding.intersects(bounding)) {
+					if (childRasterBounding.isContained(bounding)) {
+						minSeen = Math.min(minSeen, node.b + k2Raster.getLMin(child));
+						maxSeen = Math.max(minSeen, node.c - k2Raster.getLMax(child));
+					} else {
+						k2Nodes.push(new Tuple3<>(child, node.b + k2Raster.getLMin(child), node.c - k2Raster.getLMax(child)));
+					}
+				}
+			}
+		}
+		if (minSeen >= lo && maxSeen <= hi) {
+			return MBROverlapType.TotalOverlap;
+		} else if (minSeen > maxSeen || maxSeen < lo) {
+			return MBROverlapType.NoOverlap;
+		} else {
+			return MBROverlapType.PartialOverlap;
 		}
 	}
 
 	public List<Pair<Geometry, Collection<PixelRange>>> join() {
-		return join(0, Integer.MAX_VALUE);
+		return join(Integer.MIN_VALUE, Integer.MAX_VALUE);
 	}
 
 	// based on:
 	// https://journals.plos.org/plosone/article/file?id=10.1371/journal.pone.0226943&type=printable
 	public List<Pair<Geometry, Collection<PixelRange>>> join(int lo, int hi) { // should maybe return pair of such lists
-		List<Pair<Geometry, Collection<PixelRange>>> Def = new ArrayList<>(), Prob = new ArrayList<>();
+		List<Pair<Geometry, Collection<PixelRange>>> def = new ArrayList<>(), prob = new ArrayList<>();
 		Stack<Tuple3<Node<String, Geometry>, Integer, Square>> S = new Stack<>();
 
 		for (Node<String, Geometry> node : TreeExtensions.getChildren(tree.root().get())) {
@@ -209,26 +225,65 @@ public class RavenJoin {
 		while (!S.empty()) {
 			Tuple3<Node<String, Geometry>, Integer, Square> p = S.pop();
 			int[] range = k2Raster.getValueRange();
-			Tuple3<OverlapType, Integer, Square> checked = checkQuadrant(p.b, p.c, p.a.geometry().mbr(), lo, hi, range[0],
+			Tuple5<QuadOverlapType, Integer, Square, Integer, Integer> checked = checkQuadrant(p.b, p.c, p.a.geometry().mbr(),
+					lo, hi, range[0],
 					range[1]);
-			if (checked.a == OverlapType.TotalOverlap) {
-				if (TreeExtensions.isLeaf(p.a)) {
-					ExtractCells((Leaf<String, Geometry>) p.a, checked.b, checked.c, Def);
-				} else {
-					addDescendantsLeaves((NonLeaf<String, Geometry>) p.a, checked.b, checked.c, Def);
-				}
-			} else if (checked.a == OverlapType.PossibleOverlap) {
-				if (!TreeExtensions.isLeaf(p.a)) {
-					for (Node<String, Geometry> c : ((NonLeaf<String, Geometry>) p.a).children()) {
-						S.push(new Tuple3<Node<String, Geometry>, Integer, Square>(c, checked.b, checked.c));
+			switch (checked.a) {
+				case TotalOverlap:
+					if (TreeExtensions.isLeaf(p.a)) {
+						ExtractCells((Leaf<String, Geometry>) p.a, checked.b, checked.c, def);
+					} else {
+						addDescendantsLeaves((NonLeaf<String, Geometry>) p.a, checked.b, checked.c, def);
 					}
-				} else {
-					System.out.println("This should not happen");
-					// do checkMBR business
-				}
+					break;
+				case PossibleOverlap:
+					if (!TreeExtensions.isLeaf(p.a)) {
+						for (Node<String, Geometry> c : ((NonLeaf<String, Geometry>) p.a).children()) {
+							S.push(new Tuple3<Node<String, Geometry>, Integer, Square>(c, checked.b, checked.c));
+						}
+					} else {
+						System.out.println("This should not happen");
+						MBROverlapType overlap = checkMBR(checked.b, checked.c, p.a.geometry().mbr(), lo, hi, checked.d, checked.e);
+						switch (overlap) {
+							case TotalOverlap:
+								ExtractCells((Leaf<String, Geometry>) p.a, checked.b, checked.c, def);
+								break;
+							case PartialOverlap:
+								ExtractCells((Leaf<String, Geometry>) p.a, checked.b, checked.c, prob);
+								break;
+							case NoOverlap:
+								// ignored
+								break;
+						}
+					}
+					break;
+				case NoOverlap:
+					// ignored
+					break;
 			}
 		}
 
-		return Def; // new Pair<>(Def,Prob)
+		combineLists(def, prob, lo, hi);
+
+		return def;
+	}
+
+	public void combineLists(List<Pair<Geometry, Collection<PixelRange>>> def,
+			List<Pair<Geometry, Collection<PixelRange>>> prob, int lo, int hi) {
+		for (Pair<Geometry, Collection<PixelRange>> pair : prob) {
+			Pair<Geometry, Collection<PixelRange>> result = new Pair<>(pair.first, new ArrayList<>());
+			for (PixelRange range : pair.second) {
+				int[] values = k2Raster.getWindow(range.row, range.row, range.x1, range.x2);
+				for (int i = 0; i < values.length; i++) {
+					int start = i;
+					while (i < values.length && values[i] >= lo && values[i] <= hi)
+						i++;
+					if (start != i) {
+						result.second.add(new PixelRange(range.row, start + range.x1, i - 1 + range.x1));
+					}
+				}
+			}
+			def.add(result);
+		}
 	}
 }
