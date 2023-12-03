@@ -3,7 +3,6 @@ package dk.itu.raven.io;
 import java.io.File;
 import java.io.IOException;
 import dk.itu.raven.util.Pair;
-import dk.itu.raven.util.matrix.RandomMatrix;
 import dk.itu.raven.util.matrix.RastersMatrix;
 import dk.itu.raven.util.matrix.Matrix;
 import mil.nga.tiff.FileDirectory;

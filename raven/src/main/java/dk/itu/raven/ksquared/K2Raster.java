@@ -16,8 +16,9 @@ public class K2Raster {
     public BitMap Tree;
     // public DAC LMax;
     // public DAC LMin;
-    public int[] LMax;
-    public int[] LMin;
+    private int[] LMax;
+    private int[] LMin;
+    private int rMin, rMax;
 
     private int n;
     private int[] prefixsum;
@@ -32,6 +33,7 @@ public class K2Raster {
     public K2Raster(Matrix M) {
         int n = M.getHeight();
         int m = M.getWidth();
+
         // ensures n is a power of k even if the n from the input is not
         this.original_n = n;
         this.original_m = m;
@@ -54,14 +56,12 @@ public class K2Raster {
             Vmin.add(new GoodArrayList<>());
             parent.add(new GoodArrayList<>());
         }
-        // System.out.println("started Build");
+
         int[] res = Build(M, this.n, original_n, original_m, 1, 0, 0, T, Vmin, Vmax, pmax, pmin, parent, 0);
-
-        // System.out.println("done with Build");
-
-        Vmax.get(0).set(0, res[0]);
-        Vmin.get(0).set(0, res[1]);
-        maxval = res[0];
+        rMax = res[0];
+        rMin = res[1];
+        Vmax.get(0).set(0, rMax);
+        Vmin.get(0).set(0, rMin);
 
         int size_max = 0;
         int size_min = 0;
@@ -86,7 +86,7 @@ public class K2Raster {
             }
         }
 
-        if (res[0] != res[1]) {
+        if (rMax != rMin) {
             Tree.set(0);
         } else {
             Tree.unset(0);
@@ -108,19 +108,37 @@ public class K2Raster {
             }
         }
 
-        // System.out.println("a");
-
-        // System.out.println(LMaxList.length);
-        // for (int i : LMaxList) System.out.print(i + " ");
-
         // LMax = new DAC(LMaxList);
         // LMin = new DAC(LMinList);
         LMax = LMaxList;
         LMin = LMinList;
     }
 
+    /**
+     * Gets the minimum and maximum values in the K2Raster tree
+     * 
+     * @return an array of length 2, where the first element is the minimum value
+     *         and the second element is the maximum value
+     */
+    public int[] getValueRange() {
+        return new int[] { rMin, rMax };
+    }
+
+    public int getLMax(int index) {
+        return LMax[index];
+    }
+
+    public int getLMin(int index) {
+        return LMin[index];
+    }
+
+    /**
+     * gets the children of the node at index {@code index}
+     * 
+     * @param index the index of the parent node
+     * @return array of indxes
+     */
     public int[] getChildren(int index) {
-        System.out.println("index: " + index);
         if (Tree.getOrZero(index) == 0) {
             return new int[0];
         } else {
@@ -133,6 +151,10 @@ public class K2Raster {
         }
     }
 
+    /**
+     * 
+     * @return the size of the K2Raster tree
+     */
     public int getSize() {
         return this.n;
     }
@@ -195,8 +217,6 @@ public class K2Raster {
 
         if (min == max) {
             pmax[level] = pmax[level] - k * k;
-            // pmin[level - 1] = pmin[level - 1] - 1; // actual fake improvement of the K^2
-            // Raster data-structure 😱
             T.get(level).setSize(pmax[level]);
         }
 
@@ -204,6 +224,9 @@ public class K2Raster {
     }
 
     /**
+     * Use of this method is discouraged for performance reasons. Use
+     * {@code getWindow}
+     * instead.
      * 🤬
      * 
      * @param n      size of the matrix
@@ -241,7 +264,7 @@ public class K2Raster {
         int rank = (indexRank.second + this.Tree.rank(indexRank.first + 1, z));
         indexRank.first = z;
         indexRank.second = rank;
-        // Pair<Integer, Integer> ret = new Pair<>(z, rank);
+
         z = rank * k * k;
         int initialI = r1 / nKths;
         int lastI = r2 / nKths;
@@ -273,7 +296,7 @@ public class K2Raster {
                     c2p = nKths - 1;
 
                 zp = z + i * k + j;
-                // maxvalp = maxval - LMax[zp];
+
                 maxvalp = maxval - LMax[zp];
                 if (zp + 1 >= Tree.size() || Tree.getOrZero(zp + 1) == 0) {
                     int times = ((r2p - r1p) + 1) * ((c2p - c1p) + 1);
