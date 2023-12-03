@@ -26,7 +26,7 @@ public class TFWFormatTest {
 	public void testTransformationToPixelCoordinate() throws IOException {
 
 		assertEquals(570, tfw.transFromCoordinateToPixel(60, 15).x());
-		assertEquals(110, tfw.transFromCoordinateToPixel(60, 15).y());
+		assertEquals(-110, tfw.transFromCoordinateToPixel(60, 15).y());
 
 	}
 
@@ -38,9 +38,9 @@ public class TFWFormatTest {
 		assertEquals(3.1, tfw.transformFromPixelToCoordinate(1, 0).x(), 0.0);
 		assertEquals(4.0, tfw.transformFromPixelToCoordinate(1, 0).y(), 0.0);
 		assertEquals(3.0, tfw.transformFromPixelToCoordinate(0, 1).x(), 0.0);
-		assertEquals(4.1, tfw.transformFromPixelToCoordinate(0, 1).y(), 0.0);
+		assertEquals(3.9, tfw.transformFromPixelToCoordinate(0, 1).y(), 0.0);
 		assertEquals(3.1, tfw.transformFromPixelToCoordinate(1, 1).x(), 0.0);
-		assertEquals(4.1, tfw.transformFromPixelToCoordinate(1, 1).y(), 0.0);
+		assertEquals(3.9, tfw.transformFromPixelToCoordinate(1, 1).y(), 0.0);
 	}
 
 	@RepeatedTest(10000)
