@@ -13,7 +13,7 @@ public class RastersMatrix extends Matrix {
     @Override
     public int getWithinRange(int r, int c) {
         // System.out.println(rasters.getPixel(r, c)[0]);
-        return rasters.getPixel(r, c)[0].intValue();
+        return rasters.getPixelSample(0, r, c).intValue();
     }
 
 }

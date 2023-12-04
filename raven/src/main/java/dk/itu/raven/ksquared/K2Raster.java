@@ -5,6 +5,7 @@ import java.util.List;
 
 import dk.itu.raven.util.BitMap;
 import dk.itu.raven.util.GoodArrayList;
+import dk.itu.raven.util.GoodIntArrayList;
 import dk.itu.raven.util.Pair;
 import dk.itu.raven.util.matrix.Matrix;
 
@@ -45,16 +46,16 @@ public class K2Raster {
 
         int maxLevel = 1 + (int) Math.ceil(Math.log(Math.max(n, m)) / Math.log(k));
         List<BitMap> T = new ArrayList<>(maxLevel);
-        List<GoodArrayList<Integer>> Vmax = new ArrayList<GoodArrayList<Integer>>(maxLevel);
-        List<GoodArrayList<Integer>> Vmin = new ArrayList<GoodArrayList<Integer>>(maxLevel);
-        List<GoodArrayList<Integer>> parent = new ArrayList<>(maxLevel);
+        List<GoodIntArrayList> Vmax = new ArrayList<GoodIntArrayList>(maxLevel);
+        List<GoodIntArrayList> Vmin = new ArrayList<GoodIntArrayList>(maxLevel);
+        List<GoodIntArrayList> parent = new ArrayList<>(maxLevel);
         int pmax[] = new int[maxLevel];
         int pmin[] = new int[maxLevel];
         for (int i = 0; i < maxLevel; i++) {
             T.add(new BitMap(40));
-            Vmax.add(new GoodArrayList<>());
-            Vmin.add(new GoodArrayList<>());
-            parent.add(new GoodArrayList<>());
+            Vmax.add(new GoodIntArrayList());
+            Vmin.add(new GoodIntArrayList());
+            parent.add(new GoodIntArrayList());
         }
 
         int[] res = Build(M, this.n, original_n, original_m, 1, 0, 0, T, Vmin, Vmax, pmax, pmin, parent, 0);
@@ -161,8 +162,8 @@ public class K2Raster {
 
     private static int[] Build(Matrix M, int n, int original_n, int original_m, int level, int row, int column,
             List<BitMap> T,
-            List<GoodArrayList<Integer>> Vmin, List<GoodArrayList<Integer>> Vmax, int[] pmax, int[] pmin,
-            List<GoodArrayList<Integer>> parents, int parent) {
+            List<GoodIntArrayList> Vmin, List<GoodIntArrayList> Vmax, int[] pmax, int[] pmin,
+            List<GoodIntArrayList> parents, int parent) {
         num++;
         int min, max;
         min = Integer.MAX_VALUE;
