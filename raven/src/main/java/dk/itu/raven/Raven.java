@@ -32,23 +32,26 @@ public class Raven {
 
     public static void main(String[] args) throws IOException {
 
-        FileRasterReader rasterReader = new MilRasterReader(new File("C:\\Users\\alexa\\Downloads\\glc2000_v1_1_Tiff\\Tiff"));
+        FileRasterReader rasterReader = new MilRasterReader(new File(
+                "C:\\Users\\Johan\\Documents\\Research Project\\research-project\\data\\testdata\\raster\\glc2000\\"));
 
-        // RasterReader rasterReader = new GeneratorRasterReader(4000, 4000, 129384129, 10,
-        //         new TFWFormat(0.09, 0, 0, -0.09, -180, 90));
+        // RasterReader rasterReader = new GeneratorRasterReader(4000, 4000, 129384129,
+        // 10,
+        // new TFWFormat(0.09, 0, 0, -0.09, -180, 90));
         TFWFormat format = rasterReader.getTransform();
-        
+
         RTree<String, Geometry> rtree = RTree.star().maxChildren(6).create();
         ShapfileReader featureReader = new ShapfileReader(format);
-        Pair<Iterable<Polygon>, ShapfileReader.ShapeFileBounds> geometries = featureReader.readShapefile("C:\\Users\\alexa\\Downloads\\cb_2018_us_state_500k.zip");
-        
+        Pair<Iterable<Polygon>, ShapfileReader.ShapeFileBounds> geometries = featureReader.readShapefile(
+                "C:\\Users\\Johan\\Documents\\Research Project\\research-project\\data\\testdata\\vector\\cb_2018_us_state_500k.zip\\");
+
         for (Polygon geom : geometries.first) {
             geom.offset(-geometries.second.minx, -geometries.second.miny);
             rtree = rtree.add(null, geom);
         }
         System.out.print(rtree.mbr().get());
         Rectangle rect = rtree.mbr().get();
-        // Visualizer visualizer = new Visualizer((int) (rect.x2() - rect.x1()),(int) (rect.y2() - rect.y1()));
+        Visualizer visualizer = new Visualizer((int) (rect.x2() - rect.x1()), (int) (rect.y2() - rect.y1()));
 
         Matrix rasterData = rasterReader.readRasters(rtree.mbr().get());
         for (Geometry geom : geometries.first) {
@@ -59,14 +62,15 @@ public class Raven {
         System.out.println("Done Building Raster");
         System.out.println(k2Raster.Tree.size());
 
-        // visualizer.drawShapefile(geometries.first, format);
+        visualizer.drawShapefile(geometries.first, format);
 
         System.out.println("Done Building rtree");
 
         RavenJoin join = new RavenJoin(k2Raster, rtree);
         List<Pair<Geometry, Collection<PixelRange>>> result = join.join();
         System.out.println(result.size());
-        // visualizer.drawRaster(result, new VisualizerOptions("./outPutRaster.tif", false, true));
+        visualizer.drawRaster(result, new VisualizerOptions("./outPutRaster.tif",
+                false, true));
         System.out.println("Done joining");
 
     }

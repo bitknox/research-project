@@ -48,21 +48,32 @@ public class K2Raster {
         List<BitMap> T = new ArrayList<>(maxLevel);
         List<GoodIntArrayList> Vmax = new ArrayList<GoodIntArrayList>(maxLevel);
         List<GoodIntArrayList> Vmin = new ArrayList<GoodIntArrayList>(maxLevel);
-        List<GoodIntArrayList> parent = new ArrayList<>(maxLevel);
+        List<GoodIntArrayList> parentMax = new ArrayList<>(maxLevel);
+        List<GoodIntArrayList> parentMin = new ArrayList<>(maxLevel);
         int pmax[] = new int[maxLevel];
         int pmin[] = new int[maxLevel];
+        int bitsSet[] = new int[maxLevel];
         for (int i = 0; i < maxLevel; i++) {
             T.add(new BitMap(40));
             Vmax.add(new GoodIntArrayList());
             Vmin.add(new GoodIntArrayList());
-            parent.add(new GoodIntArrayList());
+            parentMax.add(new GoodIntArrayList());
+            parentMin.add(new GoodIntArrayList());
         }
 
-        int[] res = Build(M, this.n, original_n, original_m, 1, 0, 0, T, Vmin, Vmax, pmax, pmin, parent, 0);
+        int[] res = Build(M, this.n, original_n, original_m, 1, 0, 0, T, Vmin, Vmax, pmax, pmin, parentMax, parentMin,
+                0, 0, bitsSet);
         maxval = res[0];
         minval = res[1];
         Vmax.get(0).set(0, maxval);
         Vmin.get(0).set(0, minval);
+
+        int minSize = 0;
+        for (GoodIntArrayList p : Vmin) {
+            minSize += p.size();
+        }
+
+        System.out.println("minSize: " + minSize);
 
         int size_max = 0;
         int size_min = 0;
@@ -70,6 +81,9 @@ public class K2Raster {
             size_max += pmax[i];
             size_min += pmin[i];
         }
+
+        System.out.println("size_max: " + size_max);
+        System.out.println("size_min: " + size_min);
 
         int[] LMaxList = new int[size_max];
         int[] LMinList = new int[size_min];
@@ -102,17 +116,23 @@ public class K2Raster {
         int imax = 0, imin = 0;
         for (int i = 1; i < maxLevel; i++) {
             for (int j = 0; j < pmax[i]; j++) {
-                LMaxList[imax++] = Math.abs(Vmax.get(i - 1).get(parent.get(i).get(j)) - Vmax.get(i).get(j));
-                if (T.get(i).isSet(j)) {
-                    LMinList[imin++] = Math.abs(Vmin.get(i).get(j) - Vmin.get(i - 1).get(parent.get(i).get(j)));
-                }
+                LMaxList[imax++] = Math.abs(Vmax.get(i - 1).get(parentMax.get(i).get(j)) - Vmax.get(i).get(j));
+
             }
         }
+        for (int i = 1; i < maxLevel - 1; i++)
+            for (int j = 0; j < Vmin.get(i).size(); j++) {
+                int par = parentMin.get(i).get(j);
+                int vminCur = Vmin.get(i).get(j);
+                int vMinLast = Vmin.get(i - 1).get(par);
+                LMinList[imin++] = Math.abs(vminCur - vMinLast);
+            }
 
         // LMax = new DAC(LMaxList);
         // LMin = new DAC(LMinList);
         LMax = LMaxList;
         LMin = LMinList;
+
     }
 
     /**
@@ -163,7 +183,8 @@ public class K2Raster {
     private static int[] Build(Matrix M, int n, int original_n, int original_m, int level, int row, int column,
             List<BitMap> T,
             List<GoodIntArrayList> Vmin, List<GoodIntArrayList> Vmax, int[] pmax, int[] pmin,
-            List<GoodIntArrayList> parents, int parent) {
+            List<GoodIntArrayList> parentsMax, List<GoodIntArrayList> parentsMin, int parentMax, int parentMin,
+            int[] bitsSet) {
         num++;
         int min, max;
         min = Integer.MAX_VALUE;
@@ -183,29 +204,31 @@ public class K2Raster {
                     if (max < matrix_value) {
                         max = matrix_value;
                     }
-                    Vmax.get(level).set(child, matrix_value);
                     T.get(level).unset(child);
-                    parents.get(level).set(child, parent);
+                    Vmax.get(level).set(child, matrix_value);
+                    parentsMax.get(level).set(child, parentMax);
                     pmax[level]++;
                 } else {
                     int[] res = Build(M, nKths, original_n, original_m, level + 1, row + i * nKths, column + j * nKths,
                             T, Vmin, Vmax, pmax,
-                            pmin, parents,
-                            T.get(level).size());
+                            pmin, parentsMax, parentsMin,
+                            T.get(level).size(), bitsSet[level], bitsSet);
                     int childMax = res[0];
                     int childMin = res[1];
                     Vmax.get(level).set(child, childMax);
+                    parentsMax.get(level).set(child, parentMax);
+                    pmax[level]++;
                     if (childMin != childMax) {
                         Vmin.get(level).set(pmin[level], childMin);
+                        parentsMin.get(level).set(child, parentMin);
                         pmin[level]++;
                         T.get(level).set(child);
+                        bitsSet[level]++;
                     } else {
-                        Vmin.get(level).set(pmin[level], childMin);
-                        pmin[level]++;
+                        // Vmin.get(level).set(pmin[level], childMin);
+                        // pmin[level]++;
                         T.get(level).unset(child);
                     }
-                    parents.get(level).set(child, parent);
-                    pmax[level]++;
                     if (min > childMin) {
                         min = childMin;
                     }
