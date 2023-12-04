@@ -66,14 +66,21 @@ public class Polygon implements Geometry, Iterator<Point>, Iterable<Point> {
         this.mbr = mbr;
     }
 
-    // FIXME: this method is not correct
+    public void offset(double dx, double dy) {
+        for (int i = 0; i < points.size(); i++) {
+            Point p = points.get(i);
+            points.set(i, Geometries.point(p.x() + dx, p.y() + dy));
+        }
+        this.mbr = Geometries.rectangle(mbr.x1() + dx, mbr.y1() + dy, mbr.x2() + dx, mbr.y2() + dy);
+    }
+
     private double distanceSimple(Rectangle r) {
         return mbr().distance(r);
     }
 
     @Override
     public double distance(Rectangle r) {
-        return distanceSimple(r);
+        return distanceSimple(r); // a more complex method might be needed here
     }
 
     @Override
@@ -81,14 +88,13 @@ public class Polygon implements Geometry, Iterator<Point>, Iterable<Point> {
         return this.mbr;
     }
 
-    // FIXME: this method is not correct
     private boolean intersectsSimple(Rectangle r) {
         return mbr().intersects(r);
     }
 
     @Override
     public boolean intersects(Rectangle r) {
-        return intersectsSimple(r);
+        return intersectsSimple(r); // a more complex method might be needed here
     }
 
     @Override

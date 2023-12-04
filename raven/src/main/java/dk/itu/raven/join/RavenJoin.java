@@ -156,20 +156,28 @@ public class RavenJoin {
 
 	private Tuple5<QuadOverlapType, Integer, Square, Integer, Integer> checkQuadrant(int k2Index, Square rasterBounding,
 			Rectangle bounding, int lo, int hi, int min, int max) {
-		int[] children = k2Raster.getChildren(k2Index);
-		int childSize = rasterBounding.getSize() / K2Raster.k;
-		for (int i = 0; i < children.length; i++) {
-			int child = children[i];
-			Square childRasterBounding = rasterBounding.getChildSquare(childSize, i, K2Raster.k);
-			if (childRasterBounding.contains(bounding)) {
-				return checkQuadrant(child, childRasterBounding, bounding, lo, hi, min + k2Raster.getLMin(child),
-						max - k2Raster.getLMax(child));
+		int minSeen = Integer.MAX_VALUE;
+		int maxSeen = Integer.MIN_VALUE;
+		Stack<Tuple3<Integer, Integer, Integer>> k2Nodes = new Stack<>();
+		k2Nodes.push(new Tuple3<>(k2Index, min, max));
+		while (!k2Nodes.empty()) {
+			Tuple3<Integer, Integer, Integer> node = k2Nodes.pop();
+			int[] children = k2Raster.getChildren(node.a);
+			int childSize = rasterBounding.getSize() / K2Raster.k;
+			for (int i = 0; i < children.length; i++) {
+				int child = children[i];
+				Square childRasterBounding = rasterBounding.getChildSquare(childSize, i, K2Raster.k);
+				if (childRasterBounding.contains(bounding)) {
+					minSeen = Math.min(minSeen, node.b + k2Raster.getLMin(child));
+					maxSeen = Math.max(maxSeen, node.c - k2Raster.getLMax(child));
+					k2Nodes.push(new Tuple3<>(child, node.b + k2Raster.getLMin(child), node.c - k2Raster.getLMax(child)));
+				}
 			}
 		}
 
-		if (lo <= min && hi >= max) {
+		if (lo <= minSeen && hi >= maxSeen) {
 			return new Tuple5<>(QuadOverlapType.TotalOverlap, k2Index, rasterBounding, min, max);
-		} else if (min > hi || max < lo) {
+		} else if (minSeen > hi || maxSeen < lo) {
 			return new Tuple5<>(QuadOverlapType.NoOverlap, k2Index, rasterBounding, min, max);
 		} else {
 			return new Tuple5<>(QuadOverlapType.PossibleOverlap, k2Index, rasterBounding, min, max);
@@ -192,7 +200,7 @@ public class RavenJoin {
 				if (childRasterBounding.intersects(bounding)) {
 					if (childRasterBounding.isContained(bounding)) {
 						minSeen = Math.min(minSeen, node.b + k2Raster.getLMin(child));
-						maxSeen = Math.max(minSeen, node.c - k2Raster.getLMax(child));
+						maxSeen = Math.max(maxSeen, node.c - k2Raster.getLMax(child));
 					} else {
 						k2Nodes.push(new Tuple3<>(child, node.b + k2Raster.getLMin(child), node.c - k2Raster.getLMax(child)));
 					}

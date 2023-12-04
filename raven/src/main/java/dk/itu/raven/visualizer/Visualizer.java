@@ -53,19 +53,18 @@ public class Visualizer {
 		return rasterImage;
 	}
 
-	public BufferedImage drawShapefile(Iterable<Geometry> features, TFWFormat transform, VisualizerOptions options) {
+	public BufferedImage drawShapefile(Iterable<Polygon> features, TFWFormat transform, VisualizerOptions options) {
 		BufferedImage vectorImage = new BufferedImage(this.width, this.height, BufferedImage.TYPE_INT_RGB);
 		Graphics2D vectorGraphics = vectorImage.createGraphics();
 		vectorGraphics.setColor(Color.white);
 		vectorGraphics.fillRect(0, 0, this.width, this.height); // give the whole image a white background
 
-		for (Geometry feature : features) {
+		for (Polygon poly : features) {
 			if (options.useRandomColor) {
 				vectorGraphics.setColor(new Color(r.nextInt(256), r.nextInt(256), r.nextInt(256)));
 			} else {
 				vectorGraphics.setColor(options.color);
 			}
-			Polygon poly = (Polygon) feature;
 			Point old = poly.getFirst();
 			for (Point next : poly) {
 				vectorGraphics.drawLine((int) old.x(), (int) old.y(), (int) next.x(), (int) next.y());
@@ -80,7 +79,7 @@ public class Visualizer {
 		return vectorImage;
 	}
 
-	public BufferedImage drawShapefile(Iterable<Geometry> features, TFWFormat transform) {
+	public BufferedImage drawShapefile(Iterable<Polygon> features, TFWFormat transform) {
 		return drawShapefile(features, transform, new VisualizerOptions());
 	}
 

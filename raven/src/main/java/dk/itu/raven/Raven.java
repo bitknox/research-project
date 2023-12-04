@@ -26,24 +26,33 @@ import dk.itu.raven.visualizer.VisualizerOptions;
 public class Raven {
 
     public static void main(String[] args) throws IOException {
+
         Visualizer visualizer = new Visualizer(4000, 4000);
         RasterReader rasterReader = new GeneratorRasterReader(4000, 4000, 129384129, 10,
                 new TFWFormat(0.09, 0, 0, -0.09, -180, 90));
-        Pair<Matrix, TFWFormat> rasterData = rasterReader.readRasters();
+        TFWFormat format = rasterReader.getTransform();
 
-        K2Raster k2Raster = new K2Raster(rasterData.first);
+        RTree<String, Geometry> rtree = RTree.star().maxChildren(6).create();
+        ShapfileReader featureReader = new ShapfileReader(format);
+        Pair<Iterable<Polygon>, ShapfileReader.ShapeFileBounds> geometries = featureReader.readShapefile(
+                "C:\\Users\\Johan\\Documents\\Research Project\\research-project\\data\\testdata\\vector\\cb_2018_us_state_500k.zip");
+
+        for (Polygon geom : geometries.first) {
+            geom.offset(-geometries.second.minx, -geometries.second.miny);
+            rtree = rtree.add(null, geom);
+        }
+        System.out.print(rtree.mbr().get());
+
+        Matrix rasterData = rasterReader.readRasters(rtree.mbr().get());
+        for (Geometry geom : geometries.first) {
+            rtree = rtree.add(null, geom);
+        }
+
+        K2Raster k2Raster = new K2Raster(rasterData);
         System.out.println("Done Building Raster");
         System.out.println(k2Raster.Tree.size());
 
-        RTree<String, Geometry> rtree = RTree.star().maxChildren(6).create();
-        ShapfileReader featureReader = new ShapfileReader(rasterData.second);
-        Iterable<Geometry> geometries = featureReader.readShapefile(
-                "C:\\Users\\Johan\\Documents\\Research Project\\research-project\\data\\testdata\\vector\\boundaries.zip");
-
-        for (Geometry geom : geometries) {
-            rtree = rtree.add(null, geom);
-        }
-        visualizer.drawShapefile(geometries, rasterData.second);
+        visualizer.drawShapefile(geometries.first, format);
 
         System.out.println("Done Building rtree");
 
