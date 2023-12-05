@@ -2,16 +2,17 @@ package dk.itu.raven.ksquared;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Stack;
 
 import dk.itu.raven.util.BitMap;
 import dk.itu.raven.util.GoodArrayList;
 import dk.itu.raven.util.GoodIntArrayList;
 import dk.itu.raven.util.Pair;
+import dk.itu.raven.util.Tuple5;
 import dk.itu.raven.util.matrix.Matrix;
 
 public class K2Raster {
     public static final int k = 2;
-    public static int num = 0;
 
     private int maxval;
     private int minval;
@@ -63,6 +64,8 @@ public class K2Raster {
 
         int[] res = Build(M, this.n, original_n, original_m, 1, 0, 0, T, Vmin, Vmax, pmax, pmin, parentMax, parentMin,
                 0, 0, bitsSet);
+        // int[] res = BuildIterative(M, this.n, original_n, original_m, 1, 0, 0, T, Vmin, Vmax, pmax, pmin, parentMax, parentMin,
+        //         0, 0, bitsSet);
         maxval = res[0];
         minval = res[1];
         Vmax.get(0).set(0, maxval);
@@ -116,7 +119,10 @@ public class K2Raster {
         int imax = 0, imin = 0;
         for (int i = 1; i < maxLevel; i++) {
             for (int j = 0; j < pmax[i]; j++) {
-                LMaxList[imax++] = Math.abs(Vmax.get(i - 1).get(parentMax.get(i).get(j)) - Vmax.get(i).get(j));
+                int par = parentMax.get(i).get(j);
+                int vMaxCur = Vmax.get(i).get(j);
+                int vMaxLast = Vmax.get(i - 1).get(par);
+                LMaxList[imax++] = Math.abs(vMaxLast - vMaxCur);
 
             }
         }
@@ -186,17 +192,121 @@ public class K2Raster {
         return this.n;
     }
 
+    private static int[] BuildIterative(Matrix M, int n, int original_n, int original_m, int level, int row, int column,
+            List<BitMap> T,
+            List<GoodIntArrayList> Vmin, List<GoodIntArrayList> Vmax, int[] pmax, int[] pmin,
+            List<GoodIntArrayList> parentsMax, List<GoodIntArrayList> parentsMin, int parentMax, int parentMin,
+            int[] bitsSet) {
+        Stack<int[]> stack = new Stack<>();
+        Stack<int[]> returnStack = new Stack<>();
+        Stack<int[]> localStack = new Stack<>();
+        stack.push(new int[] {n, level, row, column, parentMax, parentMin});
+        while (!stack.empty()) {
+            int[] tuple = stack.pop();
+            int min, max;
+            min = Integer.MAX_VALUE;
+            max = 0;
+            boolean lastlevel = tuple[0] == k;
+            int nKths = tuple[0] / k;
+            
+            for (int i = 0; i < k; i++) {
+                for (int j = 0; j < k; j++) {
+                    int child = pmax[tuple[1]];
+                    if (lastlevel) {
+                        int matrix_value;
+                        matrix_value = M.get(tuple[2] + i, tuple[3] + j);
+
+                        if (min > matrix_value) {
+                            min = matrix_value;
+                        }
+                        if (max < matrix_value) {
+                            max = matrix_value;
+                        }
+                        T.get(tuple[1]).unset(child);
+                        Vmax.get(tuple[1]).set(child, matrix_value);
+                        parentsMax.get(tuple[1]).set(child, tuple[4]);
+                        pmax[tuple[1]]++;
+                    } else {
+                        // int[] res = Build(M, nKths, original_n, original_m, level + 1, row + i * nKths, column + j * nKths,
+                        //         T, Vmin, Vmax, pmax,
+                        //         pmin, parentsMax, parentsMin,
+                        //         T.get(level).size(), bitsSet[level], bitsSet);
+                        stack.push(new int[] {nKths, tuple[1] + 1, tuple[2] + i * nKths, tuple[3] + j * nKths, T.get(tuple[1]).size(), bitsSet[tuple[1]]});
+                        localStack.push(new int[] {tuple[1],tuple[4],tuple[5]});
+                    }
+                }
+            }
+            if (lastlevel) {
+                if (min == max) {
+                    pmax[tuple[1]] = pmax[tuple[1]] - k * k;
+                    T.get(tuple[1]).setSize(pmax[tuple[1]]);
+                }
+
+                returnStack.push(new int[] {min, max});
+            }
+        }
+
+        while (!localStack.empty()) {
+            int min, max;
+            min = Integer.MAX_VALUE;
+            max = 0;
+            int innerlevel = -1;
+            for (int i = 0; i < k; i++) {
+                for (int j = 0; j < k; j++) {
+                    int[] tuple = returnStack.pop();
+                    int[] localTuple = localStack.pop();
+                    int childMax = tuple[0];
+                    int childMin = tuple[1];
+                    innerlevel = localTuple[0];
+                    int child = pmax[innerlevel];
+                    // System.out.println(child);
+                    Vmax.get(innerlevel).set(child, childMax);
+                    parentsMax.get(innerlevel).set(child, localTuple[1]);
+                    pmax[innerlevel]++;
+                    if (childMin != childMax) {
+                        Vmin.get(innerlevel).set(pmin[innerlevel], childMin);
+                        parentsMin.get(innerlevel).set(child, localTuple[2]);
+                        pmin[innerlevel]++;
+                        T.get(innerlevel).set(child);
+                        bitsSet[innerlevel]++;
+                    } else {
+                        // Vmin.get(level).set(pmin[level], childMin);
+                        // pmin[level]++;
+                        T.get(innerlevel).unset(child);
+                    }
+                    if (min > childMin) {
+                        min = childMin;
+                    }
+                    if (max < childMax) {
+                        max = childMax;
+                    }
+                }
+            }
+            
+            if (min == max) {
+                pmax[innerlevel] = pmax[innerlevel] - k * k;
+                T.get(innerlevel).setSize(pmax[innerlevel]);
+            }
+            
+            returnStack.push(new int[] {min, max});
+        }
+
+        return returnStack.pop();
+    }
+
+
     private static int[] Build(Matrix M, int n, int original_n, int original_m, int level, int row, int column,
             List<BitMap> T,
             List<GoodIntArrayList> Vmin, List<GoodIntArrayList> Vmax, int[] pmax, int[] pmin,
             List<GoodIntArrayList> parentsMax, List<GoodIntArrayList> parentsMin, int parentMax, int parentMin,
             int[] bitsSet) {
-        num++;
+
         int min, max;
         min = Integer.MAX_VALUE;
         max = 0;
         boolean lastlevel = n == k;
         int nKths = n / k;
+        
         for (int i = 0; i < k; i++) {
             for (int j = 0; j < k; j++) {
                 int child = pmax[level];
@@ -219,6 +329,7 @@ public class K2Raster {
                             T, Vmin, Vmax, pmax,
                             pmin, parentsMax, parentsMin,
                             T.get(level).size(), bitsSet[level], bitsSet);
+                    // System.out.println(child);
                     int childMax = res[0];
                     int childMin = res[1];
                     Vmax.get(level).set(child, childMax);

@@ -24,6 +24,7 @@ import dk.itu.raven.io.TFWFormat;
 import dk.itu.raven.join.RavenJoin;
 import dk.itu.raven.ksquared.K2Raster;
 import dk.itu.raven.util.Pair;
+import dk.itu.raven.util.matrix.ArrayMatrix;
 import dk.itu.raven.util.matrix.Matrix;
 import dk.itu.raven.visualizer.Visualizer;
 import dk.itu.raven.visualizer.VisualizerOptions;
@@ -35,8 +36,25 @@ public class Raven {
         // FileRasterReader rasterReader = new MilRasterReader(new File(
         //         "C:\\Users\\alexa\\Downloads\\glc2000_v1_1_Tiff\\Tiff"));
 
-        RasterReader rasterReader = new GeneratorRasterReader(4000, 4000, 129384129, 1000,
-                        new TFWFormat(0.09, 0, 0, -0.09, -180, 90));
+        // int[][] M = {   {5,5,4,4,4,4,1,1}, //
+        //                 {5,4,4,4,4,4,1,1}, //
+        //                 {4,4,4,4,1,2,2,1}, //
+        //                 {3,3,4,3,2,1,2,2}, //
+        //                 {3,4,3,3,2,2,2,2}, //
+        //                 {4,3,3,2,2,2,2,2}, //
+        //                 {1,1,1,3,2,2,2,2}, //
+        //                 {1,1,1,2,2,2,2,2}}; //
+        
+        // K2Raster test = new K2Raster(new ArrayMatrix(M, 8, 8));
+
+        // for (int i : test.getWindow(0, 7, 0, 7)) {
+        //     System.out.print(i + " ");
+        // }
+
+        // System.exit(-1);
+
+        RasterReader rasterReader = new GeneratorRasterReader(40320, 16353, 129384129, 2,
+                        new TFWFormat(0.00892857140000, 0, 0, -0.00892857140000 , -180, 89.99107138060005));
         TFWFormat format = rasterReader.getTransform();
 
         RTree<String, Geometry> rtree = RTree.star().maxChildren(6).create();
@@ -67,7 +85,7 @@ public class Raven {
         System.out.println("Done Building rtree");
 
         RavenJoin join = new RavenJoin(k2Raster, rtree);
-        List<Pair<Geometry, Collection<PixelRange>>> result = join.join(0,200);
+        List<Pair<Geometry, Collection<PixelRange>>> result = join.join(12,12);
         System.out.println(result.size());
         visualizer.drawRaster(result, new VisualizerOptions("./outPutRaster.tif",
                 false, true));

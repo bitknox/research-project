@@ -32,7 +32,7 @@ public class Visualizer {
 	}
 
 	public BufferedImage drawRaster(List<Pair<Geometry, Collection<PixelRange>>> results, VisualizerOptions options) {
-		BufferedImage rasterImage = new BufferedImage(this.width, this.height, BufferedImage.TYPE_INT_RGB);
+		BufferedImage rasterImage = new BufferedImage(this.width, this.height, BufferedImage.TYPE_BYTE_INDEXED);
 		Graphics2D rasterGraphics = rasterImage.createGraphics();
 		rasterGraphics.setColor(Color.white);
 		rasterGraphics.fillRect(0, 0, this.width, this.height); // give the whole image a white background

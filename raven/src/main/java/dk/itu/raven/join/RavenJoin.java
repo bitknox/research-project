@@ -85,7 +85,7 @@ public class RavenJoin {
 					double x = (c - b * (y+0.5)) / a;
 					assert x - rasterBounding.getTopX() >= 0;
 					int ix = (int) Math.round(x - rasterBounding.getTopX());
-					ix = Math.min(rasterBounding.getTopX() + rasterBounding.getSize(),Math.max(ix,rasterBounding.getTopX()));
+					ix = Math.min(rasterBounding.getSize(), Math.max(ix, 0));
 					BST<Integer, Integer> bst = intersections.get(y - rasterBounding.getTopY());
 					incrementSet(bst, ix);
 				}
@@ -94,20 +94,14 @@ public class RavenJoin {
 		}
 
 		Collection<PixelRange> ranges = new ArrayList<>();
-		int x1 = Integer.MAX_VALUE, x2 = 0, y1 = Integer.MAX_VALUE, y2 = 0;
 		for (int y = 0; y < rasterBounding.getSize(); y++) {
 			BST<Integer, Integer> bst = intersections.get(y);
 			boolean inRange = false;
 			int start = 0;
 			for (int x : bst.keys()) {
-				y1 = Math.min(y1, y);
-				y2 = Math.max(y2, y);
-				x1 = Math.min(x1, x);
-				x2 = Math.max(x2, x);
 				if ((bst.get(x) & 1) == 0) {
 					if (!inRange) {
-						x += rasterBounding.getTopX();
-						ranges.add(new PixelRange(y, x, x));
+						ranges.add(new PixelRange(y + rasterBounding.getTopY(), x + rasterBounding.getTopX(), x + rasterBounding.getTopX()));
 						assert x >= 0;
 					}
 				} else {
@@ -115,8 +109,8 @@ public class RavenJoin {
 						inRange = false;
 						ranges.add(new PixelRange(y + rasterBounding.getTopY(), start + rasterBounding.getTopX(),
 								x + rasterBounding.getTopX()));
-						assert (x + rasterBounding.getTopX() >= 0);
-						assert (start + rasterBounding.getTopX() >= 0);
+						assert (x >= 0);
+						assert (start >= 0);
 					} else {
 						inRange = true;
 						start = x;
@@ -161,8 +155,10 @@ public class RavenJoin {
 	//FIXME: should not always return the same index and rasterBounding as the one given to it
 	private Tuple5<QuadOverlapType, Integer, Square, Integer, Integer> checkQuadrant(int k2Index, Square rasterBounding,
 			Rectangle bounding, int lo, int hi, int min, int max) {
-		int minSeen = Integer.MAX_VALUE;
-		int maxSeen = Integer.MIN_VALUE;
+		int minSeen = min;
+		int maxSeen = max;
+		int returnedK2Index = k2Index;
+		Square returnedrasterBounding = rasterBounding;
 		Stack<Tuple4<Integer, Square, Integer, Integer>> k2Nodes = new Stack<>();
 		k2Nodes.push(new Tuple4<>(k2Index, rasterBounding, min, max));
 		while (!k2Nodes.empty()) {
@@ -173,19 +169,22 @@ public class RavenJoin {
 				int child = children[i];
 				Square childRasterBounding = node.b.getChildSquare(childSize, i, K2Raster.k);
 				if (childRasterBounding.contains(bounding)) {
-					minSeen = Math.min(minSeen, k2Raster.computeVMin(node.d, node.c, child));
-					maxSeen = Math.max(maxSeen, k2Raster.computeVMax(node.d, child));
+					minSeen = k2Raster.computeVMin(node.d, node.c, child);
+					maxSeen = k2Raster.computeVMax(node.d, child);
 					k2Nodes.push(new Tuple4<>(child, childRasterBounding, k2Raster.computeVMin(node.d, node.c, child), k2Raster.computeVMax(node.d, child)));
+					returnedK2Index = child;
+					returnedrasterBounding = childRasterBounding;
+					break;
 				}
 			}
 		}
 
 		if (lo <= minSeen && hi >= maxSeen) {
-			return new Tuple5<>(QuadOverlapType.TotalOverlap, k2Index, rasterBounding, min, max);
+			return new Tuple5<>(QuadOverlapType.TotalOverlap, returnedK2Index, returnedrasterBounding, minSeen, maxSeen);
 		} else if (minSeen > hi || maxSeen < lo) {
-			return new Tuple5<>(QuadOverlapType.NoOverlap, k2Index, rasterBounding, min, max);
+			return new Tuple5<>(QuadOverlapType.NoOverlap, returnedK2Index, returnedrasterBounding, minSeen, maxSeen);
 		} else {
-			return new Tuple5<>(QuadOverlapType.PossibleOverlap, k2Index, rasterBounding, min, max);
+			return new Tuple5<>(QuadOverlapType.PossibleOverlap, returnedK2Index, returnedrasterBounding, minSeen, maxSeen);
 		}
 	}
 
@@ -279,7 +278,7 @@ public class RavenJoin {
 			}
 		}
 
-		combineLists(def, prob, lo, hi);
+		// combineLists(def, prob, lo, hi);
 
 		return def;
 	}
