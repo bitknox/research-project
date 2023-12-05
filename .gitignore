@@ -3,3 +3,5 @@ target
 .project
 .settings
 testdata/
+raven/output.tif
+raven/outPutRaster.tif
