@@ -107,9 +107,9 @@ public class K2Raster {
             Tree.unset(0);
         }
 
-        prefixsum = new int[Tree.size()];
+        prefixsum = new int[Tree.size()+1];
         prefixsum[0] = 0;
-        for (int i = 1; i < Tree.size(); i++) {
+        for (int i = 1; i <= Tree.size(); i++) {
             prefixsum[i] = prefixsum[i - 1] + Tree.getOrZero(i);
         }
 
@@ -145,12 +145,18 @@ public class K2Raster {
         return new int[] { minval, maxval };
     }
 
-    public int getLMax(int index) {
-        return LMax[index];
+    public int computeVMax(int parentMax, int index) {
+        if (index == 0) return maxval;
+        index--;
+        return parentMax - LMax[index];
     }
-
-    public int getLMin(int index) {
-        return LMin[index];
+    
+    public int computeVMin(int parentMax, int parentMin, int index) {
+        if (index == 0) return minval;
+        if (Tree.getOrZero(index) == 1) {
+            return parentMin + LMin[prefixsum[index]-1]; // convert LMax index to the corresponding LMin index
+        }
+        return computeVMax(parentMax, index); // since this node has no children, VMax == VMin.
     }
 
     /**
