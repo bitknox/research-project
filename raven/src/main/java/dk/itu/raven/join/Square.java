@@ -29,7 +29,11 @@ public class Square {
 	}
 
 	public boolean intersects(Rectangle rect) {
-		return Geometries.rectangle(topLeft.x, topLeft.y, topLeft.x + size, topLeft.y + size).intersects(rect);
+		if (topLeft.x > rect.x2()) return false;
+		if (topLeft.y > rect.y2()) return false;
+		if (topLeft.x + size < rect.x1()) return false;
+		if (topLeft.y + size < rect.y1()) return false;
+		return true;
 	}
 
 	private boolean contains(double x, double y) {
@@ -66,6 +70,11 @@ public class Square {
 
 	public int getTopY() {
 		return topLeft.y;
+	}
+
+	@Override
+	public String toString() {
+		return ("(" + topLeft.x + ", " + topLeft.y + "), size: " + size);
 	}
 
 }

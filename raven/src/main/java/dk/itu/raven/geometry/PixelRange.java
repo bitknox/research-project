@@ -14,4 +14,11 @@ public class PixelRange {
     public String toString() {
         return String.format("PixelRange(row=%d, x1=%d, x2=%d)", row, x1, x2);
     }
+
+    @Override
+    public boolean equals(Object other) {
+        if (!(other instanceof PixelRange)) return false;
+        PixelRange pixelRange = (PixelRange) other;
+        return this.row == pixelRange.row && this.x1 == pixelRange.x1 && this.x2 == pixelRange.x2;
+    }
 }

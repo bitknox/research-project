@@ -11,15 +11,18 @@ import java.util.HashSet;
 import java.util.Random;
 
 import org.junit.jupiter.api.Test;
+import org.locationtech.jts.geom.Coordinate;
 import org.junit.jupiter.api.RepeatedTest;
 
 import com.github.davidmoten.rtree2.geometry.Geometry;
+import com.github.davidmoten.rtree2.RTree;
 import com.github.davidmoten.rtree2.geometry.Geometries;
 import com.github.davidmoten.rtree2.geometry.Point;
 
 import dk.itu.raven.geometry.PixelRange;
 import dk.itu.raven.geometry.Polygon;
 import dk.itu.raven.ksquared.K2Raster;
+import dk.itu.raven.util.matrix.ArrayMatrix;
 import dk.itu.raven.util.matrix.Matrix;
 import dk.itu.raven.util.matrix.RandomMatrix;
 import dk.itu.raven.util.Pair;
@@ -124,4 +127,41 @@ public class RavenJoinTest {
         }
 
     }
+
+    @Test
+    public void testRavenJoin() {
+        int[][] matrix = new int[16][16];
+        int fillValue = 42; // You can change this to any integer value
+        for (int i = 0; i < 16; i++)
+            for (int j = 0; j < 16; j++)
+                matrix[i][j] = fillValue;
+        matrix[6][6] = 0;
+        
+        K2Raster k2 = new K2Raster(new ArrayMatrix(matrix, 16, 16));
+        
+        RTree<String, Geometry> rtree = RTree.star().maxChildren(6).create();
+        Polygon p = new Polygon(new Coordinate[] {new Coordinate(1,1),new Coordinate(3,1),new Coordinate(3,3),new Coordinate(1,3)});
+        Polygon p2 = new Polygon(new Coordinate[] {new Coordinate(5,5),new Coordinate(10,5),new Coordinate(10,10),new Coordinate(5,10)});
+        PixelRange[] expected = new PixelRange[] {new PixelRange(1, 1, 3),new PixelRange(2, 1, 3)};
+        PixelRange[] expected2 = new PixelRange[] {new PixelRange(5, 5, 10),new PixelRange(6, 5, 5),new PixelRange(6, 7, 10),new PixelRange(7, 5, 10),new PixelRange(8, 5, 10),new PixelRange(9, 5, 10)};
+        rtree = rtree.add(null,p);
+        rtree = rtree.add(null,p2);
+
+
+        RavenJoin join = new RavenJoin(k2, rtree);
+        List<Pair<Geometry,Collection<PixelRange>>> res = join.join(42,42);
+
+        assertEquals(res.get(0).first, p);
+        int idx = 0;
+        assertEquals(res.get(0).second.size(), expected.length);
+        assertEquals(res.get(1).second.size(), expected2.length);
+        for (PixelRange range : res.get(0).second) {
+            assertEquals(expected[idx++],range);
+        }
+        idx = 0;
+        for (PixelRange range : res.get(1).second) {
+            assertEquals(expected2[idx++],range);
+        }
+    }
+    
 }

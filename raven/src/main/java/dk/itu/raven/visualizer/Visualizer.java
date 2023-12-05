@@ -43,7 +43,7 @@ public class Visualizer {
 				rasterGraphics.setColor(options.color);
 			}
 			for (PixelRange range : pair.second) {
-				// System.out.println(range.x2 - range.x1);
+				// Logger.log(range.x2 - range.x1);
 				rasterGraphics.drawLine(range.x1, range.row, range.x2, range.row);
 			}
 		}

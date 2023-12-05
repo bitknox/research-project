@@ -75,7 +75,7 @@ public class BitMap implements Iterator<Integer>, Iterable<Integer> {
     }
 
     public int rank(int from, int to) {
-        // System.out.println("from: " + from + ", to: " + to + ", limitPos: " +
+        // Logger.log("from: " + from + ", to: " + to + ", limitPos: " +
         // limitPos);
         if (to == -1)
             return 0;

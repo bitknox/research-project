@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.List;
 
 import org.apache.hadoop.fs.Path;
+import org.locationtech.jts.geom.Coordinate;
 
 import com.github.davidmoten.rtree2.RTree;
 import com.github.davidmoten.rtree2.geometry.Geometry;
@@ -28,67 +29,53 @@ import dk.itu.raven.util.matrix.ArrayMatrix;
 import dk.itu.raven.util.matrix.Matrix;
 import dk.itu.raven.visualizer.Visualizer;
 import dk.itu.raven.visualizer.VisualizerOptions;
+import dk.itu.raven.util.Logger;
 
 public class Raven {
 
     public static void main(String[] args) throws IOException {
-
+        Logger.setDebug(true);
+            
         // FileRasterReader rasterReader = new MilRasterReader(new File(
-        //         "C:\\Users\\alexa\\Downloads\\glc2000_v1_1_Tiff\\Tiff"));
-
-        // int[][] M = {   {5,5,4,4,4,4,1,1}, //
-        //                 {5,4,4,4,4,4,1,1}, //
-        //                 {4,4,4,4,1,2,2,1}, //
-        //                 {3,3,4,3,2,1,2,2}, //
-        //                 {3,4,3,3,2,2,2,2}, //
-        //                 {4,3,3,2,2,2,2,2}, //
-        //                 {1,1,1,3,2,2,2,2}, //
-        //                 {1,1,1,2,2,2,2,2}}; //
-        
-        // K2Raster test = new K2Raster(new ArrayMatrix(M, 8, 8));
-
-        // for (int i : test.getWindow(0, 7, 0, 7)) {
-        //     System.out.print(i + " ");
-        // }
-
-        // System.exit(-1);
-
-        RasterReader rasterReader = new GeneratorRasterReader(40320, 16353, 129384129, 2,
-                        new TFWFormat(0.00892857140000, 0, 0, -0.00892857140000 , -180, 89.99107138060005));
+        //         "C:\\Users\\alexa\\Downloads\\glc2000_v1_1_Tiff\\Tiff2"));
+        RasterReader rasterReader = new GeneratorRasterReader(4000, 4000, 129384129, 12,
+                        new TFWFormat(0.09, 0, 0, -0.09 , -180, 90));
         TFWFormat format = rasterReader.getTransform();
 
         RTree<String, Geometry> rtree = RTree.star().maxChildren(6).create();
         ShapfileReader featureReader = new ShapfileReader(format);
         Pair<Iterable<Polygon>, ShapfileReader.ShapeFileBounds> geometries = featureReader.readShapefile(
-                "C:\\Users\\alexa\\Downloads\\cb_2018_us_state_500k.zip");
+                "c:\\Users\\alexa\\Downloads\\cb_2018_us_state_500k (1).zip");
 
         for (Polygon geom : geometries.first) {
             geom.offset(-geometries.second.minx, -geometries.second.miny);
             rtree = rtree.add(null, geom);
         }
-        System.out.println(rtree.mbr().get());
+        Logger.log(rtree.mbr().get());
         Rectangle rect = rtree.mbr().get();
         Visualizer visualizer = new Visualizer((int) (rect.x2() - rect.x1()), (int) (rect.y2() - rect.y1()));
 
         Matrix rasterData = rasterReader.readRasters(rtree.mbr().get());
-        // System.out.println(rasterData.get(8000, 5000));
+        // Logger.log(rasterData.get(8000, 5000));
         for (Geometry geom : geometries.first) {
             rtree = rtree.add(null, geom);
         }
 
         K2Raster k2Raster = new K2Raster(rasterData);
-        System.out.println("Done Building Raster");
-        System.out.println(k2Raster.Tree.size());
+        Logger.log("Done Building Raster");
+        Logger.log(k2Raster.Tree.size());
 
         visualizer.drawShapefile(geometries.first, format);
 
-        System.out.println("Done Building rtree");
+        Logger.log("Done Building rtree");
 
+        Logger.setDebug(false);
         RavenJoin join = new RavenJoin(k2Raster, rtree);
-        List<Pair<Geometry, Collection<PixelRange>>> result = join.join(12,12);
-        System.out.println(result.size());
+        List<Pair<Geometry, Collection<PixelRange>>> result = join.join(11,13);
+        Logger.log(result.size());
         visualizer.drawRaster(result, new VisualizerOptions("./outPutRaster.tif",
-                false, true));
-        System.out.println("Done joining");
+        false, true));
+        Logger.setDebug(true);
+        Logger.log("Done joining");
     }
 }

@@ -1,5 +1,8 @@
 package dk.itu.raven.util;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.github.davidmoten.rtree2.Leaf;
 import com.github.davidmoten.rtree2.Node;
 import com.github.davidmoten.rtree2.NonLeaf;
@@ -10,7 +13,9 @@ public class TreeExtensions {
         if (node instanceof NonLeaf) {
 			return ((NonLeaf<String,Geometry>)node).children();
         } else {
-            return null;
+            List<Node<String,Geometry>> res = new ArrayList<>();
+            res.add(node);
+            return res;
         }
     }
 
