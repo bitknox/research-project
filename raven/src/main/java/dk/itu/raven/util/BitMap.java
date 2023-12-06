@@ -205,7 +205,7 @@ public class BitMap implements Iterator<Integer>, Iterable<Integer> {
         return result;
     }
 
-    public int get(int pos) {
+    private int get(int pos) {
 
         while (pos >= capacity) {
             doubleCapacity();
@@ -239,7 +239,7 @@ public class BitMap implements Iterator<Integer>, Iterable<Integer> {
     }
 
     public boolean isSet(int pos) {
-        return get(pos) == 1;
+        return getOrZero(pos) == 1;
     }
 
     public byte[] getBytes() {

@@ -11,7 +11,7 @@ public abstract class Matrix {
     }
 
     public int get(int r, int c) {
-        if (r < 0 || r >= width || c < 0 || c >= height)
+        if (c < 0 || c >= width || r < 0 || r >= height)
             return 0;
         try {
             return getWithinRange(r, c);
@@ -28,6 +28,16 @@ public abstract class Matrix {
 
     public int getHeight() {
         return this.height;
+    }
+
+    
+    public void print() {
+        for (int i = 0; i < height; i++) {
+            for (int j = 0; j < width; j++) {
+                System.out.print(get(i, j) + " ");
+            }
+            System.out.println();
+        }
     }
 
     protected abstract int getWithinRange(int r, int c) throws IOException;

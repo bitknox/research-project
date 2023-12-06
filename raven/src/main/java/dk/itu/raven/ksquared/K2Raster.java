@@ -13,6 +13,14 @@ import dk.itu.raven.util.Logger;
 public class K2Raster {
     public static final int k = 2;
 
+    // intermediate datastructures
+    private List<GoodIntArrayList> VMax;
+    private List<GoodIntArrayList> VMin;
+    private List<BitMap> T;
+    private int[] pmax;
+    private int[] pmin;
+    private Matrix M;
+
     private int maxval;
     private int minval;
     public BitMap Tree;
@@ -37,6 +45,8 @@ public class K2Raster {
         int n = M.getHeight();
         int m = M.getWidth();
 
+        this.M = M;
+
         // ensures n is a power of k even if the n from the input is not
         this.original_n = n;
         this.original_m = m;
@@ -47,35 +57,23 @@ public class K2Raster {
         this.n = real_n;
 
         int maxLevel = 1 + (int) Math.ceil(Math.log(Math.max(n, m)) / Math.log(k));
-        List<BitMap> T = new ArrayList<>(maxLevel);
-        List<GoodIntArrayList> Vmax = new ArrayList<GoodIntArrayList>(maxLevel);
-        List<GoodIntArrayList> Vmin = new ArrayList<GoodIntArrayList>(maxLevel);
-        List<GoodIntArrayList> parentMax = new ArrayList<>(maxLevel);
-        List<GoodIntArrayList> parentMin = new ArrayList<>(maxLevel);
-        int pmax[] = new int[maxLevel];
-        int pmin[] = new int[maxLevel];
-        int bitsSet[] = new int[maxLevel];
+        T = new ArrayList<>(maxLevel);
+        VMax = new ArrayList<GoodIntArrayList>(maxLevel);
+        VMin = new ArrayList<GoodIntArrayList>(maxLevel);
+        pmax = new int[maxLevel];
+        pmin = new int[maxLevel];
         for (int i = 0; i < maxLevel; i++) {
             T.add(new BitMap(40));
-            Vmax.add(new GoodIntArrayList());
-            Vmin.add(new GoodIntArrayList());
-            parentMax.add(new GoodIntArrayList());
-            parentMin.add(new GoodIntArrayList());
+            VMax.add(new GoodIntArrayList());
+            VMin.add(new GoodIntArrayList());
+        
         }
 
-        int[] res = Build(M, this.n, original_n, original_m, 1, 0, 0, T, Vmin, Vmax, pmax, pmin, parentMax, parentMin,
-                0, 0, bitsSet);
-        maxval = res[0];
-        minval = res[1];
-        Vmax.get(0).set(0, maxval);
-        Vmin.get(0).set(0, minval);
-
-        int minSize = 0;
-        for (GoodIntArrayList p : Vmin) {
-            minSize += p.size();
-        }
-
-        Logger.log("minSize: " + minSize);
+        Pair<Integer,Integer> res = Build(this.n, 1, 0, 0);
+        maxval = res.first;
+        minval = res.second;
+        VMax.get(0).set(0, maxval);
+        VMin.get(0).set(0, minval);
 
         int size_max = 0;
         int size_min = 0;
@@ -90,10 +88,6 @@ public class K2Raster {
         int[] LMaxList = new int[size_max+1];
         int[] LMinList = new int[size_min+1];
 
-        // VMinList = new int[size_min+1];
-        // VMaxList = new int[size_max+1];
-        // int[] VMaxParList = new int[size_max+1];
-        // int[] VMinParList = new int[size_max+1];
 
         Tree = new BitMap(Math.max(1, size_max));
         int bitmapIndex = 0;
@@ -107,87 +101,71 @@ public class K2Raster {
                 }
             }
         }
-
+        pmax[0] = 1;
+        
         if (maxval != minval) {
             Tree.set(0);
+            T.get(0).set(0);
+            pmin[0] = 1;
         } else {
             Tree.unset(0);
+            T.get(0).unset(0);
+            pmin[0] = 0;
         }
 
-        prefixsum = new int[Tree.size()+1];
+        prefixsum = new int[size_max + 1];
         prefixsum[0] = 0;
-        for (int i = 1; i <= Tree.size(); i++) {
+        for (int i = 1; i < size_max+1; i++) {
             prefixsum[i] = prefixsum[i - 1] + Tree.getOrZero(i);
         }
 
         int imax = 0, imin = 0;
-        // int imin2 = 1;
-
-        for (int i = 1; i < maxLevel - 1; i++)
-            for (int j = 0; j < pmin[i]; j++) {
-                int par = parentMin.get(i).get(j);
-                int vminCur = Vmin.get(i).get(j);
-                int vMinLast = Vmin.get(i - 1).get(par);
-                // VMinList[imin++] = vminCur;
-                // VMinParList[imin] = vMinLast;
-                LMinList[imin++] = Math.abs(vminCur - vMinLast);
-            }
-            
-        for (int i = 1; i < maxLevel; i++) {
-            // int vMinIndex = 0;
+        
+        for (int i = 0; i < maxLevel - 2; i++) {
+            int internalNodeCount = 0;
+            int innerInternalNodeCount = 0;
             for (int j = 0; j < pmax[i]; j++) {
-                int par = parentMax.get(i).get(j);
-                int vMaxCur = Vmax.get(i).get(j);
-                int vMaxLast = Vmax.get(i - 1).get(par);
-                // VMaxList[imax++] = vMaxCur;
-                // VMaxParList[imax] = vMaxLast;
-                LMaxList[imax++] = Math.abs(vMaxLast - vMaxCur);
-                // if (T.get(i).isSet(j)) {
-                //     int minpar = parentMin.get(i).get(vMinIndex);
-                //     int vminCur = Vmin.get(i).get(vMinIndex);
-                //     int vMinLast = Vmin.get(i - 1).get(minpar);
-                //     VMinParList[imin] = vMinLast;
-                //     VMinList[imin++] = Vmin.get(i).get(vMinIndex++);
-                //     LMinList[imin2++] = Math.abs(vminCur - vMinLast);
-                // } else {
-                //     VMinParList[imin] = VMaxParList[imin]; // probably wrong
-                //     VMinList[imin++] = vMaxCur;
-                // }
+                if (T.get(i).isSet(j)) {
+                    int start = internalNodeCount*k*k;
+                    for (int l = start; l < start + k*k; l++) {
+                        if (T.get(i+1).isSet(l)) {
+                            LMinList[imin++] = Math.abs(VMin.get(i+1).get(innerInternalNodeCount) - VMin.get(i).get(internalNodeCount));
+                            innerInternalNodeCount++;
+                        }
+                    }
+                    internalNodeCount++;
+                }
+            }
+        }
+
+        for (int i = 0; i < maxLevel-1; i++) {
+            int internalNodeCount = 0;
+            for (int j = 0; j < pmax[i]; j++) {
+                if (T.get(i).isSet(j)) {
+                    int start = internalNodeCount*k*k;
+                    for (int l = start; l < start + k*k; l++) {
+                        LMaxList[imax++] = Math.abs(VMax.get(i).get(j) - VMax.get(i+1).get(l));
+                    }
+                    internalNodeCount++;
+                }
             }
         }
         
+        VMax = null;
+        VMin = null;
+        T = null;
+        pmax = null;
+        pmin = null;
+        M = null;
 
         // LMax = new DAC(LMaxList);
         // LMin = new DAC(LMinList);
         LMax = LMaxList;
         LMin = LMinList;
+    }
 
-        // for (int i = 1; i < Tree.size()-1; i++) {
-        //     Logger.log(Tree.get(i));
-        //     Logger.log(VMinList[i]);
-        //     Logger.log(VMinParList[i]);
-        //     Logger.log(computeVMin(VMaxParList[i], VMinParList[i], i));
-        //     Logger.log();
-        //     if (VMinList[i] != computeVMin(VMaxParList[i], VMinParList[i], i)) {
-        //         Logger.log("BOGUS: " + i);
-        //     }
-        // }
-        
-        // for (int i = 1; i < Tree.size(); i++) {
-        //     Logger.log(Tree.get(i));
-        //     Logger.log(VMaxList[i]);
-        //     Logger.log(computeVMax(VMaxParList[i], i));
-
-        //     if (VMaxList[i] != computeVMax(VMaxParList[i], i)) {
-        //         Logger.log("BOGUS: " + i);
-        //     }
-        // }
-
-        // for (int i = 1; i < Tree.size(); i++) {
-        //     if (prefixsum[i] != Tree.rank(i)) {
-        //         Logger.log("BOGUS Tree " + prefixsum[i] + ", " + Tree.rank(i));
-        //     }
-        // }
+    public boolean hasChildren(int index) {
+        return Tree.isSet(index);
     }
 
     /**
@@ -202,23 +180,16 @@ public class K2Raster {
 
     public int computeVMax(int parentMax, int index) {
         if (index == 0) return maxval;
-        return parentMax - LMax[index];
-        // return VMaxList[index];
+        return parentMax - LMax[index-1];
     }
     
     public int computeVMin(int parentMax, int parentMin, int index) {
         if (index == 0) return minval;
-
-        if (Tree.getOrZero(index) == 0) {
-            return computeVMax(parentMax, index); // convert LMax index to the corresponding LMin index
+        if (!hasChildren(index)) {
+            return computeVMax(parentMax, index);
         }
-        return parentMin + LMin[prefixsum[index]];
-        // Logger.log(Tree.size());
-        // Logger.log(prefixsum.length);
-        // Logger.log(VMaxList.length);
-        // Logger.log(VMinList.length);
-        // int prefix = prefixsum[index];
-        // return VMinList[prefix];
+        int pref = prefixsum[index-1];
+        return parentMin + LMin[pref];
     }
 
     /**
@@ -228,7 +199,7 @@ public class K2Raster {
      * @return array of indxes
      */
     public int[] getChildren(int index) {
-        if (!Tree.isSet(index)) {
+        if (!hasChildren(index)) {
             return new int[0];
         } else {
             int numInternalNodes = prefixsum[index];
@@ -248,74 +219,48 @@ public class K2Raster {
         return this.n;
     }
 
-    private static int[] Build(Matrix M, int n, int original_n, int original_m, int level, int row, int column,
-            List<BitMap> T,
-            List<GoodIntArrayList> Vmin, List<GoodIntArrayList> Vmax, int[] pmax, int[] pmin,
-            List<GoodIntArrayList> parentsMax, List<GoodIntArrayList> parentsMin, int parentMax, int parentMin,
-            int[] bitsSet) {
-
-        int min, max;
-        min = Integer.MAX_VALUE;
-        max = 0;
-        boolean lastlevel = n == k;
-        int nKths = n / k;
+    private Pair<Integer,Integer> Build(int n, int level, int row, int column) {
+        int minval = Integer.MAX_VALUE;
+        int maxval = 0;
         
         for (int i = 0; i < k; i++) {
             for (int j = 0; j < k; j++) {
-                int child = pmax[level];
-                if (lastlevel) {
-                    int matrix_value;
-                    matrix_value = M.get(row + i, column + j);
-
-                    if (min > matrix_value) {
-                        min = matrix_value;
+                if (n == k) { // last level
+                    int matrixVal = M.get(row + i, column + j);
+                    if (minval > matrixVal) {
+                        minval = matrixVal;
                     }
-                    if (max < matrix_value) {
-                        max = matrix_value;
+                    if(maxval < matrixVal){
+                        maxval = matrixVal;
                     }
-                    T.get(level).unset(child);
-                    Vmax.get(level).set(child, matrix_value);
-                    parentsMax.get(level).set(child, parentMax);
+                    VMax.get(level).set(pmax[level],matrixVal);
                     pmax[level]++;
                 } else {
-                    int[] res = Build(M, nKths, original_n, original_m, level + 1, row + i * nKths, column + j * nKths,
-                            T, Vmin, Vmax, pmax,
-                            pmin, parentsMax, parentsMin,
-                            T.get(level).size(), bitsSet[level], bitsSet);
-                    // Logger.log(child);
-                    int childMax = res[0];
-                    int childMin = res[1];
-                    Vmax.get(level).set(child, childMax);
-                    parentsMax.get(level).set(child, parentMax);
-                    pmax[level]++;
-                    if (childMin != childMax) {
-                        Vmin.get(level).set(pmin[level], childMin);
-                        parentsMin.get(level).set(pmin[level], parentMin);
+                    Pair<Integer,Integer> res = Build(n/k, level+1, row+i*(n/k), column+j*(n/k));
+                    VMax.get(level).set(pmax[level],res.first);
+                    if(res.first != res.second) {
+                        VMin.get(level).set(pmin[level],res.second);
                         pmin[level]++;
-                        T.get(level).set(child);
-                        bitsSet[level]++;
+                        T.get(level).set(pmax[level]);
                     } else {
-                        // Vmin.get(level).set(pmin[level], childMin);
-                        // pmin[level]++;
-                        T.get(level).unset(child);
+                        T.get(level).unset(pmax[level]);
                     }
-                    if (min > childMin) {
-                        min = childMin;
+                    pmax[level]++;
+                    if (minval > res.second) {
+                        minval = res.second;
                     }
-                    if (max < childMax) {
-                        max = childMax;
+                    if (maxval < res.first) {
+                        maxval = res.first;
                     }
                 }
             }
         }
-
-        if (min == max) {
-            pmax[level] = pmax[level] - k * k;
-            T.get(level).setSize(pmax[level]);
+        if (minval == maxval) {
+            pmax[level] -= k*k;
         }
 
-        return new int[] { max, min };
-    }
+        return new Pair<>(maxval, minval);
+    } 
 
     /**
      * Use of this method is discouraged for performance reasons. Use
@@ -337,7 +282,7 @@ public class K2Raster {
         int val = LMax[z]; // 😡
         maxval = maxval - val;
         // maxval = VMaxList[z];
-        if (z >= Tree.size() || Tree.getOrZero(z + 1) == 0) // 😡
+        if (!hasChildren(z+1)) // 😡
             return maxval;
         return getCell(nKths, r % nKths, c % nKths, z, maxval);
     }
@@ -394,7 +339,7 @@ public class K2Raster {
 
                 maxvalp = maxval - LMax[zp];
                 // maxvalp = VMaxList[zp];
-                if (zp + 1 >= Tree.size() || Tree.getOrZero(zp + 1) == 0) {
+                if (!hasChildren(zp+1)) {
                     int times = ((r2p - r1p) + 1) * ((c2p - c1p) + 1);
                     for (int l = 0; l < times; l++) {
                         out[index.val++] = maxvalp;
@@ -418,10 +363,10 @@ public class K2Raster {
      * @return a window of the matrix
      */
     public int[] getWindow(int r1, int r2, int c1, int c2) {
-        if (r1 < 0 || r1 >= original_n || r2 < 0 || r2 >= original_n || c1 < 0 || c1 >= original_m || c2 < 0
-                || c2 >= original_m)
+        if (r1 < 0 || r1 >= n || r2 < 0 || r2 >= n || c1 < 0 || c1 >= n || c2 < 0
+                || c2 >= n)
             throw new IndexOutOfBoundsException("looked up window (" + r1 + ", " + c1 + ", " + r2 + ", " + c2
-                    + ") in matrix with size (" + original_n + ", " + original_m + ")");
+                    + ") in matrix with size (" + n + ", " + n + ")");
         int returnSize = (r2 - r1 + 1) * (c2 - c1 + 1);
         int[] out = new int[returnSize];
         int maxLevel = 1 + (int) Math.ceil(Math.log(n) / Math.log(k));
@@ -478,7 +423,7 @@ public class K2Raster {
 
                 maxvalp = maxval - LMax[zp];
                 // maxvalp = VMaxList[zp];
-                if (zp + 1 >= Tree.size() || Tree.getOrZero(zp + 1) == 0) {
+                if (!hasChildren(zp+1)) {
                     minvalp = maxvalp;
                     if (minvalp >= vb && maxvalp <= ve) {
 
