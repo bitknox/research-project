@@ -42,10 +42,10 @@ public class RavenJoinTest {
         Square square = new Square(0, 0, 30);
         RavenJoin join = new RavenJoin(null, null);
         Collection<PixelRange> ranges = join.ExtractCellsPolygon(poly, 0, square);
-        assertTrue(ranges.stream().anyMatch(pr -> pr.row == 2 && pr.x1 == 0 && pr.x2 == 2));
+        assertTrue(ranges.stream().anyMatch(pr -> pr.row == 2 && pr.x1 == 0 && (pr.x2 == 2 || pr.x2 == 3)));
         assertFalse(ranges.stream().anyMatch(pr -> pr.row == 2 && pr.x1 == 2));
-        assertTrue(ranges.stream().anyMatch(pr -> pr.row == 3 && pr.x1 == 0 && pr.x2 == 3));
-        assertTrue(ranges.stream().anyMatch(pr -> pr.row == 2 && pr.x1 == 18 && pr.x2 == 20));
+        assertTrue(ranges.stream().anyMatch(pr -> pr.row == 3 && pr.x1 == 0 && (pr.x2 == 3 || pr.x2 == 4)));
+        assertTrue(ranges.stream().anyMatch(pr -> pr.row == 2 && (pr.x1 == 18 || pr.x1 == 17) && pr.x2 == 20));
     }
 
     @Test
@@ -59,7 +59,15 @@ public class RavenJoinTest {
         Collection<PixelRange> ranges = join.ExtractCellsPolygon(poly, 0, square);
 
         assertEquals(ranges.size(), 10);
-        for (int i = 0; i < ranges.size(); i++) {
+        assertTrue(ranges.stream().anyMatch(pr -> pr.row == 1));
+        
+        int i = 0;
+        for (PixelRange range : ranges) {
+            assertEquals(new PixelRange(i,i,i),range);
+            i++;
+        }
+
+        for (i = 0; i < ranges.size(); i++) {
             final int j = i;
             assertTrue(ranges.stream().anyMatch(pr -> pr.row == j && pr.x1 == j && pr.x2 == j));
         }

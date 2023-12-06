@@ -25,12 +25,25 @@ public class KSquaredTest {
 			assertEquals(res[i], matrix.get(row, col1 + i));
 		}
 	}
-
+	
 	private void testElements(int[] a1, int[] a2) {
 		assertEquals(a1.length,a2.length);
 		for (int i = 0; i < a1.length; i++) {
 			assertEquals(a1[i],a2[i]);
 		}
+	}
+	
+	@Test
+	public void testWithNonSquareMatrix() {
+		Matrix matrix = new RandomMatrix(2000, 500, 1000000);
+		K2Raster k2Raster = new K2Raster(matrix);
+		for (int i = 0; i < matrix.getHeight(); i++) {
+			int[] row = k2Raster.getWindow(0,matrix.getWidth()-1,i,i);
+			for (int j = 0; j < matrix.getWidth(); j++) {
+				assertEquals(matrix.get(j, i), row[j]);
+			}
+		}
+		
 	}
 
 	@Test

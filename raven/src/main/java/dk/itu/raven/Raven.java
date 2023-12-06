@@ -54,12 +54,13 @@ public class Raven {
         Logger.log(rtree.mbr().get());
         Rectangle rect = rtree.mbr().get();
         Visualizer visualizer = new Visualizer((int) (rect.x2() - rect.x1()), (int) (rect.y2() - rect.y1()));
-
+        
         Matrix rasterData = rasterReader.readRasters(rtree.mbr().get());
+        visualizer.drawVectorRasterOverlap(geometries.first, rasterData, rtree);
         // Logger.log(rasterData.get(8000, 5000));
-        for (Geometry geom : geometries.first) {
-            rtree = rtree.add(null, geom);
-        }
+        // for (Geometry geom : geometries.first) {
+        //     rtree = rtree.add(null, geom);
+        // }
 
         K2Raster k2Raster = new K2Raster(rasterData);
         Logger.log("Done Building Raster");
@@ -71,7 +72,7 @@ public class Raven {
 
         Logger.setDebug(false);
         RavenJoin join = new RavenJoin(k2Raster, rtree);
-        List<Pair<Geometry, Collection<PixelRange>>> result = join.join(11,13);
+        List<Pair<Geometry, Collection<PixelRange>>> result = join.join(0,7);
         Logger.log(result.size());
         visualizer.drawRaster(result, new VisualizerOptions("./outPutRaster.tif",
         false, true));

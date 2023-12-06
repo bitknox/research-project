@@ -4,14 +4,20 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 
+import com.github.davidmoten.rtree2.RTree;
 import com.github.davidmoten.rtree2.geometry.Geometry;
 import com.github.davidmoten.rtree2.geometry.Point;
+import com.github.davidmoten.rtree2.Node;
 
 import dk.itu.raven.geometry.PixelRange;
 import dk.itu.raven.geometry.Polygon;
 import dk.itu.raven.io.TFWFormat;
 import dk.itu.raven.util.Pair;
+import dk.itu.raven.util.TreeExtensions;
+import dk.itu.raven.util.matrix.Matrix;
 import edu.ucr.cs.bdlab.beast.geolite.IFeature;
+
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.util.Collection;
@@ -82,6 +88,57 @@ public class Visualizer {
 	public BufferedImage drawShapefile(Iterable<Polygon> features, TFWFormat transform) {
 		return drawShapefile(features, transform, new VisualizerOptions());
 	}
+
+	private void drawMbr(Node<String, Geometry> node, Graphics2D graphics) {
+		graphics.setStroke(new BasicStroke(1));
+		graphics.setColor(new Color(0,0,255));
+		for (Node<String, Geometry> child : TreeExtensions.getChildren(node)) {
+			int width = (int) (child.geometry().mbr().x2() - child.geometry().mbr().x1());
+			int height = (int) (child.geometry().mbr().y2() - child.geometry().mbr().y1());
+			graphics.drawRect((int) child.geometry().mbr().x1(), (int) child.geometry().mbr().y1(),
+					width, height);
+			if (!TreeExtensions.isLeaf(child)) {
+				drawMbr(child, graphics);
+			}
+		}
+	}
+
+	public BufferedImage drawVectorRasterOverlap(Iterable<Polygon> features, Matrix m, RTree<String, Geometry> tree) {
+		BufferedImage image = new BufferedImage(this.width, this.height, BufferedImage.TYPE_INT_RGB);
+		Graphics2D graphics = image.createGraphics();
+
+		graphics.setColor(Color.white);
+		graphics.fillRect(0, 0, this.width, this.height); // give the whole image a white background
+
+		
+
+		for (int i = 0; i < m.getWidth(); i++) {
+			for (int j = 0; j < m.getHeight(); j++) {
+				int val = 20*m.get(i, j);
+				graphics.setColor(new Color(val, val, val));
+				graphics.drawLine(i, j, i, j);
+			}
+		}
+
+		graphics.setStroke(new BasicStroke(1));
+		graphics.setColor(new Color(255,0,0));
+		
+		for (Polygon poly : features) {
+			Point old = poly.getFirst();
+			for (Point next : poly) {
+				graphics.drawLine((int) old.x(), (int) old.y(), (int) next.x(), (int) next.y());
+				old = next;
+			}
+		}
+
+		drawMbr(tree.root().get(), graphics);
+
+		writeImage(image, "./vector_raster_overlap.png", "png");
+
+		return image;
+
+	}
+	
 
 	private void writeImage(BufferedImage image, String outputPath, String outputFormat) {
 		try {

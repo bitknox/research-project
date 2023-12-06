@@ -76,8 +76,8 @@ public class RavenJoin {
 			for (int y = miny; y < maxy; y++) {
 				if (miny == maxy) {
 					if (Math.round(b * (y+0.5) - c) == 0) {
-						int start = (int) Math.round(Math.min(old.x(), next.x())) - rasterBounding.getTopX();
-						int end = (int) Math.round(Math.max(old.x(), next.x())) - rasterBounding.getTopX();
+						int start = (int) Math.floor(Math.min(old.x(), next.x())) - rasterBounding.getTopX();
+						int end = (int) Math.ceil(Math.max(old.x(), next.x())) - rasterBounding.getTopX();
 						BST<Integer, Integer> bst = intersections.get(y - rasterBounding.getTopY());
 						incrementSet(bst, start);
 						incrementSet(bst, end);
@@ -85,7 +85,7 @@ public class RavenJoin {
 				} else {
 					double x = (c - b * (y+0.5)) / a;
 					assert x - rasterBounding.getTopX() >= 0;
-					int ix = (int) Math.round(x - rasterBounding.getTopX());
+					int ix = (int) Math.floor(x - rasterBounding.getTopX());
 					ix = Math.min(rasterBounding.getSize(), Math.max(ix, 0));
 					BST<Integer, Integer> bst = intersections.get(y - rasterBounding.getTopY());
 					incrementSet(bst, ix);
@@ -100,7 +100,7 @@ public class RavenJoin {
 			boolean inRange = false;
 			int start = 0;
 			for (int x : bst.keys()) {
-				if ((bst.get(x) & 1) == 0) {
+				if ((bst.get(x) % 2) == 0) {
 					if (!inRange) {
 						ranges.add(new PixelRange(y + rasterBounding.getTopY(), x + rasterBounding.getTopX(), x + rasterBounding.getTopX()));
 						assert x >= 0;
@@ -313,11 +313,11 @@ public class RavenJoin {
 
 	public void combineLists(List<Pair<Geometry, Collection<PixelRange>>> def,
 			List<Pair<Geometry, Collection<PixelRange>>> prob, int lo, int hi) {
-		Logger.log("def: " + def.size() + ", prob: " + prob.size());
+		System.out.println("def: " + def.size() + ", prob: " + prob.size());
 		for (Pair<Geometry, Collection<PixelRange>> pair : prob) {
 			Pair<Geometry, Collection<PixelRange>> result = new Pair<>(pair.first, new ArrayList<>());
 			for (PixelRange range : pair.second) {
-				int[] values = k2Raster.getWindow(range.row, range.row, range.x1, range.x2);
+				int[] values = k2Raster.getWindow(range.x1, range.x2, range.row, range.row);
 				for (int i = 0; i < values.length; i++) {
 					int start = i;
 					while (i < values.length && values[i] >= lo && values[i] <= hi) {

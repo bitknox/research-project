@@ -34,8 +34,8 @@ public class K2Raster {
      * @param M the raw matrix data
      */
     public K2Raster(Matrix M) {
-        int n = M.getHeight();
-        int m = M.getWidth();
+        int n = M.getWidth();
+        int m = M.getHeight();
 
         // ensures n is a power of k even if the n from the input is not
         this.original_n = n;
