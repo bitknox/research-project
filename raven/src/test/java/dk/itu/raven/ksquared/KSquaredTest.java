@@ -92,9 +92,9 @@ public class KSquaredTest {
 		assertEquals(3, k2.computeVMax(4, 14));
 	}
 
-	@Test
+	@RepeatedTest(100)
 	public void testHasChildren() {
-		Matrix matrix = new RandomMatrix(32, 32, 12);
+		Matrix matrix = new RandomMatrix(200, 200, 1);
 		K2Raster k2 = new K2Raster(matrix);
 		Stack<Square> squares = new Stack<>();
 		Stack<Integer> indices = new Stack<>();
@@ -104,12 +104,12 @@ public class KSquaredTest {
 			int index = indices.pop();
 			Square square = squares.pop();
 
-			int seen = matrix.get(square.getTopX(),square.getTopY());
+			int seen = matrix.get(square.getTopY(),square.getTopX());
 			boolean isLeaf = true;
 
 			for (int i = 0; i < square.getSize() && isLeaf; i++) {
 				for (int j = 0; j < square.getSize(); j++) {
-					if (seen != matrix.get(square.getTopX() + j, square.getTopY() + i)) {
+					if (seen != matrix.get(square.getTopY() + i, square.getTopX() + j)) {
 						isLeaf = false;
 						break;
 					}
@@ -126,4 +126,49 @@ public class KSquaredTest {
 			}
 		}
 	}
+
+	@Test
+	public void testVMinVMax() {
+		Matrix matrix = new RandomMatrix(2000, 2000, 100);
+		K2Raster k2 = new K2Raster(matrix);
+		Stack<Square> squares = new Stack<>();
+		Stack<Integer> indices = new Stack<>();
+		Stack<Integer> parentMin = new Stack<>();
+		Stack<Integer> parentMax = new Stack<>();
+		indices.push(0);
+		squares.push(new Square(0, 0, k2.getSize()));
+		parentMin.push(0); // value doesn't matter
+		parentMax.push(0); // value doesn't matter
+		while (!indices.empty()) {
+			int index = indices.pop();
+			Square square = squares.pop();
+			int parmin = parentMin.pop();
+			int parmax = parentMax.pop();
+
+			int min = Integer.MAX_VALUE;
+			int max = 0;
+			boolean isLeaf = true;
+
+			for (int i = 0; i < square.getSize() && isLeaf; i++) {
+				for (int j = 0; j < square.getSize(); j++) {
+					int val = matrix.get(square.getTopY() + i, square.getTopX() + j);
+					min = Math.min(min,val);
+					max = Math.max(max,val);
+				}
+			}
+
+			assertEquals(min, k2.computeVMin(parmax, parmin, index));
+			assertEquals(max, k2.computeVMax(parmax, index));
+
+			int[] children = k2.getChildren(index);
+			for (int i = 0; i < children.length; i++) {
+				int child = children[i];
+				indices.push(child);
+				squares.push(square.getChildSquare(square.getSize() / K2Raster.k, i, K2Raster.k));
+				parentMin.push(min);
+				parentMax.push(max);
+			}
+		}
+	}
+
 }

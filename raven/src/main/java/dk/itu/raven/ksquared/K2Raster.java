@@ -113,7 +113,7 @@ public class K2Raster {
             pmin[0] = 0;
         }
 
-        prefixsum = new int[size_max+1];
+        prefixsum = new int[size_max + 1];
         prefixsum[0] = 0;
         for (int i = 1; i < size_max+1; i++) {
             prefixsum[i] = prefixsum[i - 1] + Tree.getOrZero(i);
@@ -185,9 +185,9 @@ public class K2Raster {
     
     public int computeVMin(int parentMax, int parentMin, int index) {
         if (index == 0) return minval;
-        // if (!hasChildren(index)) {
-        //     return computeVMax(parentMax, index);
-        // }
+        if (!hasChildren(index)) {
+            return computeVMax(parentMax, index);
+        }
         int pref = prefixsum[index-1];
         return parentMin + LMin[pref];
     }
@@ -363,10 +363,10 @@ public class K2Raster {
      * @return a window of the matrix
      */
     public int[] getWindow(int r1, int r2, int c1, int c2) {
-        if (r1 < 0 || r1 >= original_n || r2 < 0 || r2 >= original_n || c1 < 0 || c1 >= original_m || c2 < 0
-                || c2 >= original_m)
+        if (r1 < 0 || r1 >= n || r2 < 0 || r2 >= n || c1 < 0 || c1 >= n || c2 < 0
+                || c2 >= n)
             throw new IndexOutOfBoundsException("looked up window (" + r1 + ", " + c1 + ", " + r2 + ", " + c2
-                    + ") in matrix with size (" + original_n + ", " + original_m + ")");
+                    + ") in matrix with size (" + n + ", " + n + ")");
         int returnSize = (r2 - r1 + 1) * (c2 - c1 + 1);
         int[] out = new int[returnSize];
         int maxLevel = 1 + (int) Math.ceil(Math.log(n) / Math.log(k));

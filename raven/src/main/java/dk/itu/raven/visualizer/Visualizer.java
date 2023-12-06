@@ -118,9 +118,6 @@ public class Visualizer {
 		if (level > 14)
 			return;
 		graphics.setColor(new Color(0, 255, 0));
-		if (rasterBounding.getTopX() >= 352) {
-			int val = 0;
-		}
 		int[] children = k2Raster.getChildren(k2Index);
 		int childSize = rasterBounding.getSize() / K2Raster.k;
 			for (int i = 0; i < children.length; i++) {

@@ -30,5 +30,15 @@ public abstract class Matrix {
         return this.height;
     }
 
+    
+    public void print() {
+        for (int i = 0; i < height; i++) {
+            for (int j = 0; j < width; j++) {
+                System.out.print(get(i, j) + " ");
+            }
+            System.out.println();
+        }
+    }
+
     protected abstract int getWithinRange(int r, int c) throws IOException;
 }

@@ -157,6 +157,7 @@ public class RavenJoin {
 			Rectangle bounding, int lo, int hi, int min, int max) {
 		int vMinMBR = min;
 		int vMaxMBR = max;
+		Logger.log(vMinMBR + ", " + vMaxMBR);
 		int returnedK2Index = k2Index;
 		Square returnedrasterBounding = rasterBounding;
 		Stack<Tuple4<Integer, Square, Integer, Integer>> k2Nodes = new Stack<>();
@@ -171,6 +172,18 @@ public class RavenJoin {
 				if (childRasterBounding.contains(bounding)) {
 					vMinMBR = k2Raster.computeVMin(node.d, node.c, child);
 					vMaxMBR = k2Raster.computeVMax(node.d, child);
+					if (childSize <= 2048) {
+						int[] vals = k2Raster.getWindow(childRasterBounding.getTopY(), childRasterBounding.getTopY() + childSize - 1, childRasterBounding.getTopX(), childRasterBounding.getTopX() + childSize - 1);
+						int realmin = vals[0],realmax = vals[0];
+						for (int val : vals) {
+							realmin = Math.min(realmin,val);
+							realmax = Math.max(realmax,val);
+						}
+						if (realmin != vMinMBR || realmax != vMaxMBR) {
+							// throw new RuntimeException("vMinMBR or vMaxMBR is wrong");
+							System.out.println("vMinMBR or vMaxMBR is wrong");
+						}
+					}
 					k2Nodes.push(new Tuple4<>(child, childRasterBounding, vMinMBR, vMaxMBR));
 					returnedK2Index = child;
 					returnedrasterBounding = childRasterBounding;
@@ -220,13 +233,16 @@ public class RavenJoin {
 					int vminVal = k2Raster.computeVMin(node.d, node.c, child);
 					int vmaxVal = k2Raster.computeVMax(node.d, child);
 					if (childRasterBounding.isContained(bounding)) {
-						vMinMBR = Math.min(vminVal,vMinMBR);
-						vMaxMBR = Math.max(vmaxVal,vMaxMBR);
+						vMinMBR = Math.min(vminVal, vMinMBR);
+						vMaxMBR = Math.max(vmaxVal, vMaxMBR);
 					} else {
 						k2Nodes.push(new Tuple4<>(child, childRasterBounding, vminVal, vmaxVal));
 					}
 				}
 			}
+		}
+		if (vMinMBR == Integer.MAX_VALUE || vMaxMBR == Integer.MIN_VALUE) {
+			throw new RuntimeException("rasterBounding was never contained in bounding");
 		}
 		if (vMinMBR >= lo && vMaxMBR <= hi) {
 			return MBROverlapType.TotalOverlap;
@@ -245,20 +261,19 @@ public class RavenJoin {
 	// https://journals.plos.org/plosone/article/file?id=10.1371/journal.pone.0226943&type=printable
 	public List<Pair<Geometry, Collection<PixelRange>>> join(int lo, int hi) {
 		List<Pair<Geometry, Collection<PixelRange>>> def = new ArrayList<>(), prob = new ArrayList<>();
-		Stack<Tuple3<Node<String, Geometry>, Integer, Square>> S = new Stack<>();
+		Stack<Tuple5<Node<String, Geometry>, Integer, Square,Integer,Integer>> S = new Stack<>();
 
-		
+		int[] minmax = k2Raster.getValueRange();
 
 		for (Node<String, Geometry> node : TreeExtensions.getChildren(tree.root().get())) {
-			S.push(new Tuple3<>(node, 0, new Square(0, 0, k2Raster.getSize())));
+			S.push(new Tuple5<>(node, 0, new Square(0, 0, k2Raster.getSize()), minmax[0], minmax[1]));
 		}
 
 		while (!S.empty()) {
-			Tuple3<Node<String, Geometry>, Integer, Square> p = S.pop();
-			int[] range = k2Raster.getValueRange();
+			Tuple5<Node<String, Geometry>, Integer, Square, Integer, Integer> p = S.pop();
 			Tuple5<QuadOverlapType, Integer, Square, Integer, Integer> checked = checkQuadrant(p.b, p.c, p.a.geometry().mbr(),
-					lo, hi, range[0],
-					range[1]);
+					lo, hi, p.d,
+					p.e);
 			switch (checked.a) {
 				case TotalOverlap:
 					if (TreeExtensions.isLeaf(p.a)) {
@@ -270,7 +285,7 @@ public class RavenJoin {
 				case PossibleOverlap:
 					if (!TreeExtensions.isLeaf(p.a)) {
 						for (Node<String, Geometry> c : ((NonLeaf<String, Geometry>) p.a).children()) {
-							S.push(new Tuple3<Node<String, Geometry>, Integer, Square>(c, checked.b, checked.c));
+							S.push(new Tuple5<Node<String, Geometry>, Integer, Square, Integer, Integer>(c, checked.b, checked.c,checked.d, checked.e));
 						}
 					} else {
 						MBROverlapType overlap = checkMBR(checked.b, checked.c, p.a.geometry().mbr(), lo, hi, checked.d, checked.e);
@@ -280,6 +295,7 @@ public class RavenJoin {
 								break;
 							case PartialOverlap:
 								ExtractCells((Leaf<String, Geometry>) p.a, checked.b, checked.c, prob);
+								System.out.println(p.a.geometry().mbr());
 								break;
 							case NoOverlap:
 								// ignored
