@@ -11,7 +11,7 @@ public abstract class Matrix {
     }
 
     public int get(int r, int c) {
-        if (r < 0 || r >= width || c < 0 || c >= height)
+        if (c < 0 || c >= width || r < 0 || r >= height)
             return 0;
         try {
             return getWithinRange(r, c);

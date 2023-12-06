@@ -29,10 +29,10 @@ public class GeneratorRasterReader implements RasterReader {
 		int width = (int) rect.x2() - (int) rect.x1();
 		int height = (int) rect.y2() - (int) rect.y1();
 
-		int[][] m = new int[width][height];
+		int[][] m = new int[height][width];
 
-		for (int i = 0; i < width; i++) {
-			for (int j = 0; j < height; j++) {
+		for (int i = 0; i < height; i++) {
+			for (int j = 0; j < width; j++) {
 				m[i][j] = randomMatrix.get(i, j);
 			}
 		}

@@ -153,7 +153,6 @@ public class RavenJoin {
 		}
 	}
 
-	//FIXME: should not always return the same index and rasterBounding as the one given to it
 	private Tuple5<QuadOverlapType, Integer, Square, Integer, Integer> checkQuadrant(int k2Index, Square rasterBounding,
 			Rectangle bounding, int lo, int hi, int min, int max) {
 		int vMinMBR = min;
@@ -180,11 +179,10 @@ public class RavenJoin {
 			}
 		}
 
-		if (vMinMBR > vMaxMBR) {
-			// Logger.log("BOGUS: " + vMinMBR + ", " + vMaxMBR);
-		}
+		Logger.log(vMinMBR + ", " + vMaxMBR);
 
 		if (lo <= vMinMBR && hi >= vMaxMBR) {
+			System.out.println("total overlap for " + returnedrasterBounding + " with mbr " + bounding);
 			return new Tuple5<>(QuadOverlapType.TotalOverlap, returnedK2Index, returnedrasterBounding, vMinMBR, vMaxMBR);
 		} else if (vMinMBR > hi || vMaxMBR < lo) {
 			return new Tuple5<>(QuadOverlapType.NoOverlap, returnedK2Index, returnedrasterBounding, vMinMBR, vMaxMBR);
@@ -195,57 +193,46 @@ public class RavenJoin {
 
 	private MBROverlapType checkMBR(int k2Index, Square rasterBounding, Rectangle bounding,
 			int lo, int hi, int min, int max) {
-		// Logger.log("Call arguments:");
-		// Logger.log(rasterBounding);
-		// Logger.log(bounding);
-		// Logger.log();
-		// // Logger.log("checking MBR");
 		int vMinMBR = Integer.MAX_VALUE;
 		int vMaxMBR = Integer.MIN_VALUE;
+
 		Stack<Tuple4<Integer, Square, Integer, Integer>> k2Nodes = new Stack<>();
 		k2Nodes.push(new Tuple4<>(k2Index, rasterBounding, min, max));
+
 		while (!k2Nodes.empty()) {
 			Tuple4<Integer, Square, Integer, Integer> node = k2Nodes.pop();
 			int[] children = k2Raster.getChildren(node.a);
 			int childSize = node.b.getSize() / K2Raster.k;
-			// Logger.log(children.length);
-			// Logger.log(k2Raster.computeVMax(node.d, node.a) + ", " + k2Raster.computeVMin(node.d, node.c, node.a));
+
 			if (children.length == 0 && rasterBounding.intersects(bounding)) {
-				// Logger.log("leaf node intersects");
-				vMinMBR = Math.min(k2Raster.computeVMax(node.d, node.a),vMinMBR);
-				vMaxMBR = Math.max(k2Raster.computeVMax(node.d, node.a),vMaxMBR);
+				if (k2Raster.computeVMax(node.d, node.a) != k2Raster.computeVMin(node.d, node.c, node.a)) {
+					throw new RuntimeException("VMin and VMax were different at root node");
+				}
+				vMinMBR = Math.min(k2Raster.computeVMax(node.d, node.a), vMinMBR);
+				vMaxMBR = Math.max(k2Raster.computeVMax(node.d, node.a), vMaxMBR);
 			}
+
 			for (int i = 0; i < children.length; i++) {
 				int child = children[i];
 				Square childRasterBounding = node.b.getChildSquare(childSize, i, K2Raster.k);
+				
 				if (childRasterBounding.intersects(bounding)) {
 					int vminVal = k2Raster.computeVMin(node.d, node.c, child);
 					int vmaxVal = k2Raster.computeVMax(node.d, child);
-					// Logger.log(vminVal);
-					// Logger.log(vmaxVal);
 					if (childRasterBounding.isContained(bounding)) {
-						// Logger.log("contained");
 						vMinMBR = Math.min(vminVal,vMinMBR);
 						vMaxMBR = Math.max(vmaxVal,vMaxMBR);
 					} else {
-						// Logger.log("not contained");
-						// Logger.log(childRasterBounding);
-						// Logger.log(bounding);
 						k2Nodes.push(new Tuple4<>(child, childRasterBounding, vminVal, vmaxVal));
 					}
 				}
 			}
 		}
-		// Logger.log(vMinMBR + ", " + vMaxMBR);
-		// Logger.log();
 		if (vMinMBR >= lo && vMaxMBR <= hi) {
-			// // Logger.log("total");
 			return MBROverlapType.TotalOverlap;
 		} else if (vMinMBR > hi || vMaxMBR < lo) {
-			// // Logger.log("no");
 			return MBROverlapType.NoOverlap;
 		} else {
-			// // Logger.log("partial");
 			return MBROverlapType.PartialOverlap;
 		}
 	}
@@ -317,7 +304,7 @@ public class RavenJoin {
 		for (Pair<Geometry, Collection<PixelRange>> pair : prob) {
 			Pair<Geometry, Collection<PixelRange>> result = new Pair<>(pair.first, new ArrayList<>());
 			for (PixelRange range : pair.second) {
-				int[] values = k2Raster.getWindow(range.x1, range.x2, range.row, range.row);
+				int[] values = k2Raster.getWindow(range.row, range.row, range.x1, range.x2-1);
 				for (int i = 0; i < values.length; i++) {
 					int start = i;
 					while (i < values.length && values[i] >= lo && values[i] <= hi) {

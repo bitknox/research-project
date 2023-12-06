@@ -35,17 +35,21 @@ public class Raven {
 
     public static void main(String[] args) throws IOException {
         Logger.setDebug(true);
-            
-        // FileRasterReader rasterReader = new MilRasterReader(new File(
-        //         "C:\\Users\\alexa\\Downloads\\glc2000_v1_1_Tiff\\Tiff2"));
-        RasterReader rasterReader = new GeneratorRasterReader(4000, 4000, 129384129, 12,
-                        new TFWFormat(0.09, 0, 0, -0.09 , -180, 90));
+
+        
+        long start = System.nanoTime();
+        FileRasterReader rasterReader = new MilRasterReader(new File(
+            "C:\\Users\\alexa\\Downloads\\glc2000_v1_1_Tiff\\Tiff"));
+            // RasterReader rasterReader = new GeneratorRasterReader(4000, 4000, 129384129, 12,
+            //                 new TFWFormat(0.09, 0, 0, -0.09 , -180, 90));
+        long end = System.nanoTime();
+        System.out.println(end-start);
         TFWFormat format = rasterReader.getTransform();
 
         RTree<String, Geometry> rtree = RTree.star().maxChildren(6).create();
         ShapfileReader featureReader = new ShapfileReader(format);
         Pair<Iterable<Polygon>, ShapfileReader.ShapeFileBounds> geometries = featureReader.readShapefile(
-                "c:\\Users\\alexa\\Downloads\\cb_2018_us_state_500k (1).zip");
+                "c:\\Users\\alexa\\Downloads\\cb_2018_us_state_500k.zip");
 
         for (Polygon geom : geometries.first) {
             geom.offset(-geometries.second.minx, -geometries.second.miny);
@@ -56,13 +60,14 @@ public class Raven {
         Visualizer visualizer = new Visualizer((int) (rect.x2() - rect.x1()), (int) (rect.y2() - rect.y1()));
         
         Matrix rasterData = rasterReader.readRasters(rtree.mbr().get());
-        visualizer.drawVectorRasterOverlap(geometries.first, rasterData, rtree);
+
         // Logger.log(rasterData.get(8000, 5000));
         // for (Geometry geom : geometries.first) {
         //     rtree = rtree.add(null, geom);
         // }
 
         K2Raster k2Raster = new K2Raster(rasterData);
+        visualizer.drawVectorRasterOverlap(geometries.first, rasterData, rtree, k2Raster);
         Logger.log("Done Building Raster");
         Logger.log(k2Raster.Tree.size());
 
@@ -70,11 +75,11 @@ public class Raven {
 
         Logger.log("Done Building rtree");
 
-        Logger.setDebug(false);
+        // Logger.setDebug(false);
         RavenJoin join = new RavenJoin(k2Raster, rtree);
-        List<Pair<Geometry, Collection<PixelRange>>> result = join.join(0,7);
+        List<Pair<Geometry, Collection<PixelRange>>> result = join.join(12,22);
         Logger.log(result.size());
-        visualizer.drawRaster(result, new VisualizerOptions("./outPutRaster.tif",
+        visualizer.drawRaster(result,geometries.first, new VisualizerOptions("./outPutRaster.tif",
         false, true));
         Logger.setDebug(true);
         Logger.log("Done joining");

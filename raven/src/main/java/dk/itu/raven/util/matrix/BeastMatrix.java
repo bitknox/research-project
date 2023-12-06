@@ -19,7 +19,7 @@ public class BeastMatrix extends Matrix {
 
     @Override
     protected int getWithinRange(int r, int c) throws IOException {
-        return (int) raster.getPixel(r + xoffset, yoffset + c);
+        return (int) raster.getPixel(c + xoffset, yoffset + r);
     }
     
 }
