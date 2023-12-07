@@ -30,9 +30,10 @@ public class MilRasterReader extends FileRasterReader {
 
 		ImageWindow window = new ImageWindow((int) rect.x1(), (int) rect.y1(), (int) Math.ceil(rect.x2()),
 				(int) Math.ceil(rect.y2()));
-
 		if (window.getMaxX() - window.getMinX() > imageWidth || window.getMaxY() - window.getMinY() > imageHeight) {
-			rasters = directory.readRasters();
+			window = new ImageWindow((int) rect.x1(), (int) rect.y1(), imageWidth - (int) rect.x1(),
+					imageHeight - (int) rect.y1());
+			rasters = directory.readRasters(window);
 		} else {
 			rasters = directory.readRasters(window);
 		}
