@@ -373,10 +373,11 @@ class BenchmarkUtil {
       for (int j = 0; j < n; j++) {
         System.out.println("run: " + j);
         Timer t = new Timer();
-        for (int i = 0; i < count; i++)
-          dummy += f.applyAsDouble(i);
-        runningTime += t.check();
-        double time = runningTime * 1e9 / count;
+        dummy += f.applyAsDouble(j);
+        double rTime = t.check();
+        System.out.println("runningTime: " + runningTime);
+        double time = rTime;
+        runningTime += rTime;
         st += time;
         sst += time * time;
         totalCount += count;
