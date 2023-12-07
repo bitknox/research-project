@@ -11,7 +11,7 @@ import dk.itu.raven.util.matrix.Matrix;
 import dk.itu.raven.util.Logger;
 
 public class K2Raster {
-    public static final int k = 2;
+    public static final int k = 2; // parameter selected by us
 
     // intermediate datastructures
     private List<GoodIntArrayList> VMax;
@@ -21,19 +21,16 @@ public class K2Raster {
     private int[] pmin;
     private Matrix M;
 
-    private int maxval;
-    private int minval;
-    public BitMap Tree;
+    private int maxval; // the maximum value stored in the matrix
+    private int minval; // the minimum value stored in the matrix
+    public BitMap Tree; // A tree where the i'th index is a one iff. the node with index i is internal
     // public DAC LMax;
     // public DAC LMin;
-    private int[] LMax;
-    private int[] LMin;
-    // private int[] VMaxList;
-    // private int[] VMinList;
+    private int[] LMax; // stores the difference between the maximum value stored in a node and the maximum value of its parent node
+    private int[] LMin; // stores the difference between the minimum value stored in a node and the minimum value of its parent node
 
-    private int n;
-    private int[] prefixsum;
-    private int original_n, original_m;
+    private int n; // the size of the matrix, always a power of k
+    private int[] prefixsum; // a prefix sum of the tree
 
     /**
      * bulds a K^2 Raster data-structure for an n*m matrix (meaning a 2-dimensional
@@ -48,8 +45,6 @@ public class K2Raster {
         this.M = M;
 
         // ensures n is a power of k even if the n from the input is not
-        this.original_n = n;
-        this.original_m = m;
         int real_n = 1;
         while (real_n < n || real_n < m) {
             real_n *= k;
@@ -66,28 +61,28 @@ public class K2Raster {
             T.add(new BitMap(40));
             VMax.add(new GoodIntArrayList());
             VMin.add(new GoodIntArrayList());
-        
+            
         }
 
         Pair<Integer,Integer> res = Build(this.n, 1, 0, 0);
+        M = null;
         maxval = res.first;
         minval = res.second;
         VMax.get(0).set(0, maxval);
         VMin.get(0).set(0, minval);
-
+        
         int size_max = 0;
         int size_min = 0;
         for (int i = 1; i < maxLevel; i++) {
             size_max += pmax[i];
             size_min += pmin[i];
         }
-
+        
         Logger.log("size_max: " + size_max);
         Logger.log("size_min: " + size_min);
 
         int[] LMaxList = new int[size_max+1];
         int[] LMinList = new int[size_min+1];
-
 
         Tree = new BitMap(Math.max(1, size_max));
         int bitmapIndex = 0;
@@ -103,24 +98,25 @@ public class K2Raster {
         }
         pmax[0] = 1;
         
-        if (maxval != minval) {
+        if (maxval != minval) { // the root of the k2 raster tree is not a leaf
             Tree.set(0);
             T.get(0).set(0);
             pmin[0] = 1;
-        } else {
+        } else { // the root of the k2 raster tree is a leaf
             Tree.unset(0);
             T.get(0).unset(0);
             pmin[0] = 0;
         }
-
+        
         prefixsum = new int[size_max + 1];
         prefixsum[0] = 0;
         for (int i = 1; i < size_max+1; i++) {
             prefixsum[i] = prefixsum[i - 1] + Tree.getOrZero(i);
         }
-
+        
         int imax = 0, imin = 0;
         
+        // compute LMin using the VMin computed in Build
         for (int i = 0; i < maxLevel - 2; i++) {
             int internalNodeCount = 0;
             int innerInternalNodeCount = 0;
@@ -137,7 +133,10 @@ public class K2Raster {
                 }
             }
         }
-
+        VMin = null;
+        pmin = null;
+        
+        // compute LMax using the VMax computed in Build
         for (int i = 0; i < maxLevel-1; i++) {
             int internalNodeCount = 0;
             for (int j = 0; j < pmax[i]; j++) {
@@ -152,11 +151,8 @@ public class K2Raster {
         }
         
         VMax = null;
-        VMin = null;
         T = null;
         pmax = null;
-        pmin = null;
-        M = null;
 
         // LMax = new DAC(LMaxList);
         // LMin = new DAC(LMinList);
@@ -164,6 +160,11 @@ public class K2Raster {
         LMin = LMinList;
     }
 
+    /**
+     * 
+     * @param index the LMax index of a node of the k2 raster tree
+     * @return {@code true} if the node corresponding to the given index is an internal node, {@code false} otherwise.
+     */
     public boolean hasChildren(int index) {
         return Tree.isSet(index);
     }
@@ -178,11 +179,24 @@ public class K2Raster {
         return new int[] { minval, maxval };
     }
 
+    /**
+     * 
+     * @param parentMax The maximum value stored in the sub-matrix corresponding to the parent of the node with the given index.
+     * @param index the LMax index of a node of the k2 raster tree
+     * @return the maximum value stored in the sub-matrix corresponding to the node with the given index
+     */
     public int computeVMax(int parentMax, int index) {
         if (index == 0) return maxval;
         return parentMax - LMax[index-1];
     }
-    
+
+    /**
+     * 
+     * @param parentMax The maximum value stored in the sub-matrix corresponding to the parent of the node with the given index.
+     * @param parentMin The minimum value stored in the sub-matrix corresponding to the parent of the node with the given index.
+     * @param index the LMax index of a node of the k2 raster tree
+     * @return the minimum value stored in the sub-matrix corresponding to the node with the given index
+     */
     public int computeVMin(int parentMax, int parentMin, int index) {
         if (index == 0) return minval;
         if (!hasChildren(index)) {
@@ -266,7 +280,6 @@ public class K2Raster {
      * Use of this method is discouraged for performance reasons. Use
      * {@code getWindow}
      * instead.
-     * 🤬
      * 
      * @param n      size of the matrix
      * @param r      the row to access
@@ -462,13 +475,13 @@ public class K2Raster {
      * @param r2 row number for the bottom right corner of window
      * @param c1 column number for the top left corner of window
      * @param c2 column number for the bottom right corner of window
-     * @return a window of the matrix
+     * @return a window of the matrix with only the values {@code v} that satisfy {@code vb <= v <= ve}
      */
     public int[] searchValuesInWindow(int r1, int r2, int c1, int c2, int thresholdLow, int thresholdHigh) {
-        if (r1 < 0 || r1 >= original_n || r2 < 0 || r2 >= original_n || c1 < 0 || c1 >= original_m || c2 < 0
-                || c2 >= original_m)
+        if (r1 < 0 || r1 >= n || r2 < 0 || r2 >= n || c1 < 0 || c1 >= n || c2 < 0
+                || c2 >= n)
             throw new IndexOutOfBoundsException("looked up window (" + r1 + ", " + c1 + ", " + r2 + ", " + c2
-                    + ") in matrix with size (" + original_n + ", " + original_m + ")");
+                    + ") in matrix with size (" + n + ", " + n + ")");
         int returnSize = (r2 - r1 + 1) * (c2 - c1 + 1); // can be smaller.
         int[] out = new int[returnSize];
         int maxLevel = 1 + (int) Math.ceil(Math.log(n) / Math.log(k));

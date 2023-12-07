@@ -15,7 +15,6 @@ import com.github.davidmoten.rtree2.geometry.Point;
 import com.github.davidmoten.rtree2.geometry.Rectangle;
 
 import dk.itu.raven.util.TreeExtensions;
-import dk.itu.raven.util.Tuple3;
 import dk.itu.raven.util.Tuple4;
 import dk.itu.raven.util.Tuple5;
 import dk.itu.raven.geometry.PixelRange;
@@ -46,10 +45,12 @@ public class RavenJoin {
 		this.tree = tree;
 	}
 
-	/*
-	 * instead of sorting indices, store a boolean array of whether there is an
-	 * intersection at a given x coordinate (rounded to nearest integer).
-	 * Then do a linear pass over this array to store the indices in sorted order.
+	/**
+	 * 
+	 * @param polygon the vector shape
+	 * @param pk an index of a node in the k2 raster tree
+	 * @param rasterBounding teh bounding box of the sub-matrix corresponding to the node with index {@code pk} in the k2 raster tree
+	 * @return A collection of pixels that are contained in the vector shape described by {@code polygon}
 	 */
 	protected Collection<PixelRange> ExtractCellsPolygon(Polygon polygon, int pk, Square rasterBounding) {
 		// 1 on index i * rasterBounding.geetSize() + j if an intersection between a
@@ -64,17 +65,17 @@ public class RavenJoin {
 		// a line is of the form a*x + b*y = c
 		Point old = polygon.getFirst();
 		for (Point next : polygon) {
+			// compute the standard form of teh line segment between the points old and next
 			double a = (next.y() - old.y());
 			double b = (old.x() - next.x());
 			double c = a * old.x() + b * old.y();
 
-			// int miny = (int) Math.round(Math.min(old.y(), next.y()));
-			// int maxy = (int) Math.round(Math.max(old.y(), next.y()));
 			int miny = (int) Math.min(rasterBounding.getTopY() + rasterBounding.getSize(), Math.max(rasterBounding.getTopY(), Math.round(Math.min(old.y(), next.y()))));
 			int maxy = (int) Math.min(rasterBounding.getTopY() + rasterBounding.getSize(), Math.max(rasterBounding.getTopY(), Math.round(Math.max(old.y(), next.y()))));
 
+			// compute all intersections between the line segment and horizontal pixel lines
 			for (int y = miny; y < maxy; y++) {
-				if (miny == maxy) {
+				if (miny == maxy) { // horizontal line segment
 					if (Math.round(b * (y+0.5) - c) == 0) {
 						int start = (int) Math.floor(Math.min(old.x(), next.x())) - rasterBounding.getTopX();
 						int end = (int) Math.ceil(Math.max(old.x(), next.x())) - rasterBounding.getTopX();
@@ -100,18 +101,16 @@ public class RavenJoin {
 			boolean inRange = false;
 			int start = 0;
 			for (int x : bst.keys()) {
-				if ((bst.get(x) % 2) == 0) {
+				if ((bst.get(x) % 2) == 0) { // an even number of intersections happen at this point
 					if (!inRange) {
+						// if a range is ongoing, ignore these intersections, otherwise add this single pixel as a range
 						ranges.add(new PixelRange(y + rasterBounding.getTopY(), x + rasterBounding.getTopX(), x + rasterBounding.getTopX()));
-						assert x >= 0;
 					}
 				} else {
 					if (inRange) {
 						inRange = false;
 						ranges.add(new PixelRange(y + rasterBounding.getTopY(), start + rasterBounding.getTopX(),
 								x + rasterBounding.getTopX()));
-						assert (x >= 0);
-						assert (start >= 0);
 					} else {
 						inRange = true;
 						start = x;
@@ -123,6 +122,11 @@ public class RavenJoin {
 		return ranges;
 	}
 
+	/**
+	 * increments the stored number of intersections that happen at the given x-ordinate
+	 * @param bst a set of intersections
+	 * @param key an x-ordinate of an intersection
+	 */
 	private void incrementSet(BST<Integer, Integer> bst, Integer key) {
 		Integer num = bst.get(key);
 		if (num == null) {
@@ -137,14 +141,21 @@ public class RavenJoin {
 	private void ExtractCells(Leaf<String, Geometry> pr, int pk, Square rasterBounding,
 			List<Pair<Geometry, Collection<PixelRange>>> def) {
 		for (Entry<String, Geometry> entry : ((Leaf<String, Geometry>) pr).entries()) {
+			// all geometries we store are polygons
 			def.add(new Pair<>(entry.geometry(), ExtractCellsPolygon((Polygon) entry.geometry(), pk, rasterBounding)));
 		}
 	}
 
+	/**
+	 * adds all descendant geometries of a given R*-tree node
+	 * @param pr the node of the R*-tree
+	 * @param pk the index of the k2 raster tree node
+	 * @param rasterBounding the bounding box of the sum-matrix corresponding to the node with index {@code pk} in the k2 raster tree
+	 * @param def the list all the pixelranges should be added to
+	 */
 	private void addDescendantsLeaves(NonLeaf<String, Geometry> pr, int pk, Square rasterBounding,
 			List<Pair<Geometry, Collection<PixelRange>>> def) {
 		for (Node<String, Geometry> n : pr.children()) {
-			// I could not find a better way than this:
 			if (TreeExtensions.isLeaf(n)) {
 				ExtractCells((Leaf<String, Geometry>) n, pk, rasterBounding, def);
 			} else {
@@ -153,6 +164,25 @@ public class RavenJoin {
 		}
 	}
 
+	/**
+	 * Finds the smallest node of the k2 raster tree that fully contains the given bounding box 
+	 * @param k2Index the index of the starting node in the k2 raster tree. This node should always contain {@code bounding}
+	 * @param rasterBounding the bounding box of the sum-matrix corresponding to the node with index {@code k2Index} in the k2 raster tree
+	 * @param bounding the bounding rectangle of some geometry
+	 * @param lo the minimum pixel-value we are looking for
+	 * @param hi the maximum pixel-value we are looking for
+	 * @param min the value of VMin for the node with index {@code k2Index} in the k2 raster tree
+	 * @param max the value of VMax for the node with index {@code k2Index} in the k2 raster tree
+	 * @return a 5-tuple (OverlapType, k2Index', rasterBounding', min', max')
+	 * where:
+	 * <ul>
+	 * <li>OverlapType is one of {TotalOverlap, PossibleOverlap, NoOverlap}.</li>
+	 * <li>k2Index' is the smallest k2 raster node that fully contains {@code bounding}</li>
+	 * <li>rasterBounding' is the bounding box of k2Index'</li>
+	 * <li>min' is the value of VMin for the node with index k2Index' in the k2 raster tree</li>
+	 * <li>max' is the value of VMax for the node with index k2Index' in the k2 raster tree</li>
+	 * </ul>
+	 */
 	private Tuple5<QuadOverlapType, Integer, Square, Integer, Integer> checkQuadrant(int k2Index, Square rasterBounding,
 			Rectangle bounding, int lo, int hi, int min, int max) {
 		int vMinMBR = min;
@@ -172,18 +202,7 @@ public class RavenJoin {
 				if (childRasterBounding.contains(bounding)) {
 					vMinMBR = k2Raster.computeVMin(node.d, node.c, child);
 					vMaxMBR = k2Raster.computeVMax(node.d, child);
-					if (childSize <= 2048) {
-						int[] vals = k2Raster.getWindow(childRasterBounding.getTopY(), childRasterBounding.getTopY() + childSize - 1, childRasterBounding.getTopX(), childRasterBounding.getTopX() + childSize - 1);
-						int realmin = vals[0],realmax = vals[0];
-						for (int val : vals) {
-							realmin = Math.min(realmin,val);
-							realmax = Math.max(realmax,val);
-						}
-						if (realmin != vMinMBR || realmax != vMaxMBR) {
-							// throw new RuntimeException("vMinMBR or vMaxMBR is wrong");
-							System.out.println("vMinMBR or vMaxMBR is wrong");
-						}
-					}
+
 					k2Nodes.push(new Tuple4<>(child, childRasterBounding, vMinMBR, vMaxMBR));
 					returnedK2Index = child;
 					returnedrasterBounding = childRasterBounding;
@@ -195,7 +214,7 @@ public class RavenJoin {
 		Logger.log(vMinMBR + ", " + vMaxMBR);
 
 		if (lo <= vMinMBR && hi >= vMaxMBR) {
-			System.out.println("total overlap for " + returnedrasterBounding + " with mbr " + bounding);
+			Logger.log("total overlap for " + returnedrasterBounding + " with mbr " + bounding);
 			return new Tuple5<>(QuadOverlapType.TotalOverlap, returnedK2Index, returnedrasterBounding, vMinMBR, vMaxMBR);
 		} else if (vMinMBR > hi || vMaxMBR < lo) {
 			return new Tuple5<>(QuadOverlapType.NoOverlap, returnedK2Index, returnedrasterBounding, vMinMBR, vMaxMBR);
@@ -203,6 +222,7 @@ public class RavenJoin {
 			return new Tuple5<>(QuadOverlapType.PossibleOverlap, returnedK2Index, returnedrasterBounding, vMinMBR, vMaxMBR);
 		}
 	}
+
 
 	private MBROverlapType checkMBR(int k2Index, Square rasterBounding, Rectangle bounding,
 			int lo, int hi, int min, int max) {
@@ -253,12 +273,22 @@ public class RavenJoin {
 		}
 	}
 
+	/**
+	 * joins without filtering based on values
+	 * @return a list of Geometries paired with a collection of the pixelranges that it contains
+	 */
 	public List<Pair<Geometry, Collection<PixelRange>>> join() {
 		return join(Integer.MIN_VALUE, Integer.MAX_VALUE);
 	}
 
 	// based on:
 	// https://journals.plos.org/plosone/article/file?id=10.1371/journal.pone.0226943&type=printable
+	/**
+	 * joins while filtering based on values
+	 * @param lo the minimum pixel-value that should be included in the join
+	 * @param hi the maximum pixel-value that should be included in the join
+	 * @return a list of Geometries paired with a collection of the pixelranges, whose values fall within the given range, that it contains
+	 */
 	public List<Pair<Geometry, Collection<PixelRange>>> join(int lo, int hi) {
 		List<Pair<Geometry, Collection<PixelRange>>> def = new ArrayList<>(), prob = new ArrayList<>();
 		Stack<Tuple5<Node<String, Geometry>, Integer, Square,Integer,Integer>> S = new Stack<>();
@@ -295,7 +325,7 @@ public class RavenJoin {
 								break;
 							case PartialOverlap:
 								ExtractCells((Leaf<String, Geometry>) p.a, checked.b, checked.c, prob);
-								System.out.println(p.a.geometry().mbr());
+								Logger.log(p.a.geometry().mbr());
 								break;
 							case NoOverlap:
 								// ignored
@@ -314,13 +344,13 @@ public class RavenJoin {
 		return def;
 	}
 
-	public void combineLists(List<Pair<Geometry, Collection<PixelRange>>> def,
+	protected void combineLists(List<Pair<Geometry, Collection<PixelRange>>> def,
 			List<Pair<Geometry, Collection<PixelRange>>> prob, int lo, int hi) {
 		System.out.println("def: " + def.size() + ", prob: " + prob.size());
 		for (Pair<Geometry, Collection<PixelRange>> pair : prob) {
 			Pair<Geometry, Collection<PixelRange>> result = new Pair<>(pair.first, new ArrayList<>());
 			for (PixelRange range : pair.second) {
-				int[] values = k2Raster.getWindow(range.row, range.row, range.x1, range.x2-1);
+				int[] values = k2Raster.getWindow(range.row, range.row, range.x1, range.x2);
 				for (int i = 0; i < values.length; i++) {
 					int start = i;
 					while (i < values.length && values[i] >= lo && values[i] <= hi) {

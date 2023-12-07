@@ -1,6 +1,5 @@
 package dk.itu.raven.join;
 
-import com.github.davidmoten.rtree2.geometry.Geometries;
 import com.github.davidmoten.rtree2.geometry.Rectangle;
 
 import dk.itu.raven.geometry.PixelCoordinate;

@@ -17,7 +17,6 @@ import dk.itu.raven.ksquared.K2Raster;
 import dk.itu.raven.util.Pair;
 import dk.itu.raven.util.TreeExtensions;
 import dk.itu.raven.util.matrix.Matrix;
-import edu.ucr.cs.bdlab.beast.geolite.IFeature;
 
 import java.awt.BasicStroke;
 import java.awt.Color;

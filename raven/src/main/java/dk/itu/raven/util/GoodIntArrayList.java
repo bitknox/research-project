@@ -6,7 +6,6 @@ public class GoodIntArrayList {
     int capacity;
     int size;
     int[] array;
-    private static final int[] DEFAULTCAPACITY_EMPTY_ELEMENTDATA = {};
 
     public GoodIntArrayList(int initialCapacity) {
         if (initialCapacity > 0) {

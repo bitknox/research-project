@@ -10,7 +10,6 @@ public class GoodArrayList<T> implements List<T> {
     int capacity;
     int size;
     Object[] array;
-    private static final Object[] DEFAULTCAPACITY_EMPTY_ELEMENTDATA = {};
 
     public GoodArrayList(int initialCapacity) {
         if (initialCapacity > 0) {
