@@ -26,7 +26,7 @@ public class BeastJava {
     String[] vectorSets = {
         "/data/testdata/vector/cb_2018_us_state_500k.zip",
         "/data/testdata/vector/boundaries.zip" };
-    String[] rasterSets = { "/data/testdata/raster/glc2000" };
+    String[] rasterSets = { "/data/testdata/raster/treecover" };
     BenchRunner runner = new BenchRunner();
     // Generate the combinations we want to run benchmarks for
     List<ABenchmark> benchmarks = new ArrayList<>();
