@@ -239,9 +239,6 @@ public class RavenJoin {
 			int childSize = node.b.getSize() / K2Raster.k;
 
 			if (children.length == 0 && rasterBounding.intersects(bounding)) {
-				if (k2Raster.computeVMax(node.d, node.a) != k2Raster.computeVMin(node.d, node.c, node.a)) {
-					throw new RuntimeException("VMin and VMax were different at root node");
-				}
 				vMinMBR = Math.min(k2Raster.computeVMax(node.d, node.a), vMinMBR);
 				vMaxMBR = Math.max(k2Raster.computeVMax(node.d, node.a), vMaxMBR);
 			}

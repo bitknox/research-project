@@ -51,8 +51,10 @@ public class Raven {
 
         RTree<String, Geometry> rtree = RTree.star().maxChildren(6).create();
         ShapfileReader featureReader = new ShapfileReader(format);
+        // Pair<Iterable<Polygon>, ShapfileReader.ShapeFileBounds> geometries = featureReader.readShapefile(
+        //         "c:\\Users\\alexa\\Downloads\\cb_2018_us_state_500k.zip");
         Pair<Iterable<Polygon>, ShapfileReader.ShapeFileBounds> geometries = featureReader.readShapefile(
-                "c:\\Users\\alexa\\Downloads\\cb_2018_us_state_500k.zip");
+                "c:\\Users\\alexa\\Downloads\\boundaries.zip");
         
         Rectangle rect = Geometries.rectangle(geometries.second.minx, geometries.second.miny, geometries.second.maxx, geometries.second.maxy);
         Visualizer visualizer = new Visualizer((int) (rect.x2() - rect.x1()), (int) (rect.y2() - rect.y1()));
@@ -77,10 +79,13 @@ public class Raven {
         Logger.log("Done Building rtree");
 
         RavenJoin join = new RavenJoin(k2Raster, rtree);
-        List<Pair<Geometry, Collection<PixelRange>>> result = join.join(12,12);
-        Logger.log(result.size());
-        visualizer.drawRaster(result,geometries.first, new VisualizerOptions("./outPutRaster.tif",
-        false, true));
+        for (int i = 0; i <= 23; i++) {
+            long start = System.nanoTime();
+            List<Pair<Geometry, Collection<PixelRange>>> result = join.join(i, i);
+            System.out.println(System.nanoTime()- start);
+            visualizer.drawRaster(result,geometries.first, new VisualizerOptions("./outPutRasterBoundaries- + " + i + " +.jpg",
+            false, true));
+        }
         Logger.log("Done joining");
     }
 }
