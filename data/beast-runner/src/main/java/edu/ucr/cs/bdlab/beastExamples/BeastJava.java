@@ -25,7 +25,7 @@ public class BeastJava {
     sparkContext.setLogLevel("ERROR");
     String[] vectorSets = {
         "/data/testdata/vector/boundaries.zip", "/data/testdata/vector/cb_2018_us_state_500k.zip" };
-    String[] rasterSets = { "/data/testdata/raster/glc2000", "/data/testdata/raster/treecover" };
+    String[] rasterSets = { "/data/testdata/raster/glc2000" };
     BenchRunner runner = new BenchRunner();
     // Generate the combinations we want to run benchmarks for
     List<ABenchmark> benchmarks = new ArrayList<>();
