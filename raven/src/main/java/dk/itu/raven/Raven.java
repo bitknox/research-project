@@ -44,7 +44,7 @@ public class Raven {
                 // testThings();
 
                 FileRasterReader rasterReader = new MilRasterReader(new File(
-                                "C:\\Users\\Johan\\Documents\\Research Project\\research-project\\data\\testdata\\raster\\treecover"));
+                                "/home/joinpro/research-project/data/testdata/raster/glc2000/"));
                 // RasterReader rasterReader = new GeneratorRasterReader(4000, 4000, 129384129,
                 // 12,
                 // new TFWFormat(0.09, 0, 0, -0.09 , -180, 90));
@@ -56,7 +56,7 @@ public class Raven {
                 // featureReader.readShapefile(
                 // "c:\\Users\\alexa\\Downloads\\cb_2018_us_state_500k.zip");
                 Pair<Iterable<Polygon>, ShapfileReader.ShapeFileBounds> geometries = featureReader.readShapefile(
-                                "C:\\Users\\Johan\\Documents\\Research Project\\research-project\\data\\testdata\\vector\\boundaries.zip");
+                                "/home/joinpro/research-project/data/testdata/vector/cb_2018_us_state_500k.zip");
 
                 Rectangle rect = Geometries.rectangle(geometries.second.minx, geometries.second.miny,
                                 geometries.second.maxx,
