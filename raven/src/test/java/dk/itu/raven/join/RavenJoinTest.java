@@ -41,7 +41,7 @@ public class RavenJoinTest {
 
         Square square = new Square(0, 0, 30);
         RavenJoin join = new RavenJoin(null, null);
-        Collection<PixelRange> ranges = join.ExtractCellsPolygon(poly, 0, square);
+        Collection<PixelRange> ranges = join.ExtractCellsPolygon(poly, 0, square,30);
         assertTrue(ranges.stream().anyMatch(pr -> pr.row == 2 && pr.x1 == 0 && (pr.x2 == 2 || pr.x2 == 3)));
         assertFalse(ranges.stream().anyMatch(pr -> pr.row == 2 && pr.x1 == 2));
         assertTrue(ranges.stream().anyMatch(pr -> pr.row == 3 && pr.x1 == 0 && (pr.x2 == 3 || pr.x2 == 4)));
@@ -56,7 +56,7 @@ public class RavenJoinTest {
         Polygon poly = new Polygon(points);
         Square square = new Square(0, 0, 11);
         RavenJoin join = new RavenJoin(null, null);
-        Collection<PixelRange> ranges = join.ExtractCellsPolygon(poly, 0, square);
+        Collection<PixelRange> ranges = join.ExtractCellsPolygon(poly, 0, square,10);
 
         assertEquals(ranges.size(), 10);
         assertTrue(ranges.stream().anyMatch(pr -> pr.row == 1));
@@ -169,6 +169,40 @@ public class RavenJoinTest {
         idx = 0;
         for (PixelRange range : res.get(1).second) {
             assertEquals(expected2[idx++],range);
+        }
+    }
+
+    @Test
+    public void testCombineListExtremePixelRanges() {
+        Matrix matrix = new RandomMatrix(64, 64, 100);
+        K2Raster k2Raster = new K2Raster(matrix);
+        RavenJoin join = new RavenJoin(k2Raster, null);
+        List<Pair<Geometry, Collection<PixelRange>>> def = new ArrayList<>();
+        List<Pair<Geometry, Collection<PixelRange>>> prob = new ArrayList<>();
+        List<PixelRange> initialDef = new ArrayList<>();
+        def.add(new Pair<Geometry, Collection<PixelRange>>(null, new ArrayList<>()));
+        prob.add(new Pair<Geometry, Collection<PixelRange>>(null, new ArrayList<>()));
+        for (int i = 0; i < matrix.getHeight(); i++) {
+            int start = 0;
+            int end = 63;
+            PixelRange range = new PixelRange(i, start, end);
+
+            if (i % 2 == 0) {
+                def.get(0).second.add(range);
+                initialDef.add(range);
+            } else {
+                prob.get(0).second.add(range);
+            }
+        }
+
+        join.combineLists(def, prob, 0, 100);
+
+        for (PixelRange range : initialDef) {
+            assertTrue(def.get(0).second.contains(range));
+        }
+
+        for (PixelRange range : prob.get(0).second) {
+            assertTrue(def.stream().anyMatch(pr -> pr.second.contains(range)));
         }
     }
     

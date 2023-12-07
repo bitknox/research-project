@@ -5,3 +5,6 @@ target
 testdata/
 raven/output.tif
 raven/outPutRaster.tif
+vector_raster_overlap.png
+output.tif
+outPutRaster.tif

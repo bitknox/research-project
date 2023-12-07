@@ -113,7 +113,7 @@ public class K2Raster {
         for (int i = 1; i < size_max + 1; i++) {
             prefixsum[i] = prefixsum[i - 1] + Tree.getOrZero(i);
         }
-        
+
         int imax = 0, imin = 0;
         
         // compute LMin using the VMin computed in Build
@@ -317,7 +317,7 @@ public class K2Raster {
             int level, List<Pair<Integer, Integer>> indexRanks) {
         int nKths = (n / k);
         Pair<Integer, Integer> indexRank = indexRanks.get(level);
-        int rank = (indexRank.second + this.Tree.rank(indexRank.first + 1, z));
+        int rank = prefixsum[z+1];
         indexRank.first = z;
         indexRank.second = rank;
 
@@ -381,7 +381,7 @@ public class K2Raster {
     public int[] getWindow(int r1, int r2, int c1, int c2) {
         if (r1 < 0 || r1 >= n || r2 < 0 || r2 >= n || c1 < 0 || c1 >= n || c2 < 0
                 || c2 >= n)
-            throw new IndexOutOfBoundsException("looked up window (" + r1 + ", " + c1 + ", " + r2 + ", " + c2
+            throw new IndexOutOfBoundsException("looked up window (" + c1 + ", " + r1 + ", " + c2 + ", " + r2
                     + ") in matrix with size (" + n + ", " + n + ")");
         int returnSize = (r2 - r1 + 1) * (c2 - c1 + 1);
         int[] out = new int[returnSize];
@@ -399,49 +399,33 @@ public class K2Raster {
             int minval, int vb,
             int ve, int[] out,
             IntPointer index,
-            int level, List<Pair<Integer, Integer>> indexRanks) {
-        int nKths = (n / k); // childsize
-        Pair<Integer, Integer> indexRank = indexRanks.get(level);
-        int rank = (indexRank.second + this.Tree.rank(indexRank.first + 1, z));
-        indexRank.first = z;
-        indexRank.second = rank;
+            int level) {
 
+        int cbasex, cbasey;
+
+        int nKths = (n / k); // childsize
+        int rank = prefixsum[z+1];
         z = rank * k * k;
-        int initialI = r1 / nKths;
-        int lastI = r2 / nKths;
-        int initialJ = c1 / nKths;
-        int lastJ = c2 / nKths;
+        int initialI = (r1 - basey) / nKths;
+        int lastI = (r2 - basey) / nKths;
+        int initialJ = (c1 - basex) / nKths;
+        int lastJ = (c2 - basex) / nKths;
 
         int r1p, r2p, c1p, c2p, maxvalp, minvalp, zp;
 
         for (int i = initialI; i <= lastI; i++) {
-            int cbasey = basey + i * nKths;
-            if (i == initialI)
-                r1p = r1 % nKths;
-            else
-                r1p = 0;
-
-            if (i == lastI)
-                r2p = r2 % nKths;
-            else
-                r2p = nKths - 1;
+            cbasey = basey + i * nKths;
 
             for (int j = initialJ; j <= lastJ; j++) {
-                int cbasex = basex + j * nKths;
-                if (j == initialJ)
-                    c1p = c1 % nKths;
-                else
-                    c1p = 0;
-
-                if (j == lastJ)
-                    c2p = c2 % nKths;
-                else
-                    c2p = nKths - 1;
-
                 zp = z + i * k + j;
-
+                cbasex = basex + j * nKths;
                 maxvalp = maxval - LMax[zp];
-                // maxvalp = VMaxList[zp];
+
+                if (maxvalp < ve) {
+                    continue;
+                }
+
+                // maxvalp = computeVMax(maxval, zp);
                 boolean addCells = false;
                 if (!hasChildren(zp + 1)) {
                     minvalp = maxvalp;
@@ -450,39 +434,34 @@ public class K2Raster {
                         /* all cells meet the condition in this branch */
                     }
                 } else {
-                    int rank2 = this.Tree.rank(zp); // missing from and to.
-                    int pref = prefixsum[rank2];
-                    int min1 = LMin[pref];
-                    minvalp = minval + min1;
-                    if (minvalp >= vb && maxvalp <= ve) {
-                        addCells = true;
-                        /* all cells meet the condition in this branch */
-                    }
-                    if (minvalp > ve && maxvalp < vb) {
-                        addCells = false;
-                    }
-                    if (minvalp < vb || maxvalp > ve) {
-                        searchValuesInWindow(nKths, r1p, r2p, c1p, c2p, cbasex, cbasey, zp, maxvalp, minvalp, vb, ve,
-                                out, index,
-                                level + 1,
-                                indexRanks);
-                    }
+                    // minvalp = computeVMin(maxval, minval, zp);
+                    minvalp = minval + LMin[prefixsum[zp+1]];
+                }
+                if (minvalp > ve) {
+                    continue;
                 }
 
-                int cxini = Math.max(c1, cbasex);
-                int cxend = Math.max(c2, cbasex + nKths - 1);
-                int cyini = Math.max(r1, cbasey);
-                int cyend = Math.max(r2, cbasey + nKths - 1);
+                r1p = Math.max(c1, cbasex);
+                r2p = Math.min(c2, cbasex + nKths - 1);
+                c1p = Math.max(r1, cbasey);
+                c2p = Math.min(r2, cbasey + nKths - 1);
+
+                if (minvalp >= vb && maxvalp <= ve) {
+                    addCells = true;
+                    /* all cells meet the condition in this branch */
+                } else {
+                    searchValuesInWindow(nKths, r1p, r2p, c1p, c2p, cbasex, cbasey, zp, maxvalp, minvalp, vb, ve,
+                            out, index,
+                            level + 1);
+                }
 
                 if (addCells) {
-                    System.out.println("x1: " + cxini + ", x2: " + cxend + ", y1: " + cyini + ", y2: " + cyend);
-                    // System.out.println("x1: " + c1 + ", x2: " + c2 + ", y1: " + c1p + ", y2: " +
-                    // c2p);
+                    System.out.println("x1: " + c1 + ", x2: " + c2 + ", y1: " + r1 + ", y2: " + r2);
                 }
             }
         }
     }
-
+    
     /**
      * Reads data from a window of the matrix given by the two points
      * {@code (r1,c1)} and {@code (r2,c2)}
@@ -500,15 +479,9 @@ public class K2Raster {
                     + ") in matrix with size (" + n + ", " + n + ")");
         int returnSize = (r2 - r1 + 1) * (c2 - c1 + 1); // can be smaller.
         int[] out = new int[returnSize];
-        int maxLevel = 1 + (int) Math.ceil(Math.log(n) / Math.log(k));
-        GoodArrayList<Pair<Integer, Integer>> indexRanks = new GoodArrayList<Pair<Integer, Integer>>(maxLevel);
-        for (int i = 0; i < maxLevel; i++) {
-            indexRanks.set(i, new Pair<>(-1, 0));
-        }
         searchValuesInWindow(this.n, r1, r2, c1, c2, 0, 0, -1, this.maxval, this.minval, thresholdLow, thresholdHigh,
                 out,
-                new IntPointer(), 0,
-                indexRanks);
+                new IntPointer(), 0);
 
         return out;
     }

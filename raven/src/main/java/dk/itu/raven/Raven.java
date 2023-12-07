@@ -39,7 +39,7 @@ import dk.itu.raven.util.Logger;
 public class Raven {
 
     public static void main(String[] args) throws IOException {
-        Logger.setDebug(true);
+        Logger.setDebug(false);
 
         // testThings();
         
@@ -76,13 +76,11 @@ public class Raven {
 
         Logger.log("Done Building rtree");
 
-        // Logger.setDebug(false);
         RavenJoin join = new RavenJoin(k2Raster, rtree);
-        List<Pair<Geometry, Collection<PixelRange>>> result = join.join(22,22);
+        List<Pair<Geometry, Collection<PixelRange>>> result = join.join(12,12);
         Logger.log(result.size());
         visualizer.drawRaster(result,geometries.first, new VisualizerOptions("./outPutRaster.tif",
         false, true));
-        Logger.setDebug(true);
         Logger.log("Done joining");
     }
 }

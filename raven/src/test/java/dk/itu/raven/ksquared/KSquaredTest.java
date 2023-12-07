@@ -60,7 +60,8 @@ public class KSquaredTest {
 	@Test
 	public void testGetWindowValuesRow() {
 		K2Raster k2 = new K2Raster(new ArrayMatrix(M, 8, 8));
-		k2.searchValuesInWindow(0, 7, 0, 7, 1, 1);
+		// k2.searchValuesInWindow(0, 7, 0, 7, 1, 1);
+		k2.searchValuesInWindowPaper(0, 7, 0, 7, 1, 1);
 	}
 
 	@Test

@@ -52,7 +52,7 @@ public class RavenJoin {
 	 * @param rasterBounding teh bounding box of the sub-matrix corresponding to the node with index {@code pk} in the k2 raster tree
 	 * @return A collection of pixels that are contained in the vector shape described by {@code polygon}
 	 */
-	protected Collection<PixelRange> ExtractCellsPolygon(Polygon polygon, int pk, Square rasterBounding) {
+	protected Collection<PixelRange> ExtractCellsPolygon(Polygon polygon, int pk, Square rasterBounding, int maxX) {
 		// 1 on index i * rasterBounding.geetSize() + j if an intersection between a
 		// line of the polygon and the line y=j happens at point (i,j)
 		// 1 on index i if the left-most pixel of row i intersects the polygon, 0
@@ -75,22 +75,23 @@ public class RavenJoin {
 
 			// compute all intersections between the line segment and horizontal pixel lines
 			for (int y = miny; y < maxy; y++) {
-				if (miny == maxy) { // horizontal line segment
-					if (Math.round(b * (y+0.5) - c) == 0) {
-						int start = (int) Math.floor(Math.min(old.x(), next.x())) - rasterBounding.getTopX();
-						int end = (int) Math.ceil(Math.max(old.x(), next.x())) - rasterBounding.getTopX();
-						BST<Integer, Integer> bst = intersections.get(y - rasterBounding.getTopY());
-						incrementSet(bst, start);
-						incrementSet(bst, end);
-					}
-				} else {
-					double x = (c - b * (y+0.5)) / a;
-					assert x - rasterBounding.getTopX() >= 0;
-					int ix = (int) Math.floor(x - rasterBounding.getTopX());
-					ix = Math.min(rasterBounding.getSize(), Math.max(ix, 0));
-					BST<Integer, Integer> bst = intersections.get(y - rasterBounding.getTopY());
-					incrementSet(bst, ix);
-				}
+				// if (miny == maxy) { // horizontal line segment
+				// 	if (Math.round(b * (y+0.5) - c) == 0) {
+				// 		int start = (int) Math.floor(Math.min(old.x(), next.x())) - rasterBounding.getTopX();
+				// 		int end = (int) Math.ceil(Math.max(old.x(), next.x())) - rasterBounding.getTopX();
+				// 		BST<Integer, Integer> bst = intersections.get(y - rasterBounding.getTopY());
+				// 		incrementSet(bst, start);
+				// 		incrementSet(bst, end);
+				// 	}
+				// } else {
+				double x = (c - b * (y+0.5)) / a;
+				assert x - rasterBounding.getTopX() >= 0;
+				int ix = (int) Math.floor(x - rasterBounding.getTopX());
+				ix = Math.min(rasterBounding.getSize(), Math.max(ix, 0));
+				ix = Math.min(maxX, ix);
+				BST<Integer, Integer> bst = intersections.get(y - rasterBounding.getTopY());
+				incrementSet(bst, ix);
+				// }
 			}
 			old = next;
 		}
@@ -139,10 +140,10 @@ public class RavenJoin {
 	// based loosely on:
 	// https://bitbucket.org/bdlabucr/beast/src/master/raptor/src/main/java/edu/ucr/cs/bdlab/raptor/Intersections.java
 	private void ExtractCells(Leaf<String, Geometry> pr, int pk, Square rasterBounding,
-			List<Pair<Geometry, Collection<PixelRange>>> def) {
+			List<Pair<Geometry, Collection<PixelRange>>> def, int maxX) {
 		for (Entry<String, Geometry> entry : ((Leaf<String, Geometry>) pr).entries()) {
 			// all geometries we store are polygons
-			def.add(new Pair<>(entry.geometry(), ExtractCellsPolygon((Polygon) entry.geometry(), pk, rasterBounding)));
+			def.add(new Pair<>(entry.geometry(), ExtractCellsPolygon((Polygon) entry.geometry(), pk, rasterBounding, maxX)));
 		}
 	}
 
@@ -154,12 +155,12 @@ public class RavenJoin {
 	 * @param def the list all the pixelranges should be added to
 	 */
 	private void addDescendantsLeaves(NonLeaf<String, Geometry> pr, int pk, Square rasterBounding,
-			List<Pair<Geometry, Collection<PixelRange>>> def) {
+			List<Pair<Geometry, Collection<PixelRange>>> def, int maxX) {
 		for (Node<String, Geometry> n : pr.children()) {
 			if (TreeExtensions.isLeaf(n)) {
-				ExtractCells((Leaf<String, Geometry>) n, pk, rasterBounding, def);
+				ExtractCells((Leaf<String, Geometry>) n, pk, rasterBounding, def, maxX);
 			} else {
-				addDescendantsLeaves((NonLeaf<String, Geometry>) n, pk, rasterBounding, def);
+				addDescendantsLeaves((NonLeaf<String, Geometry>) n, pk, rasterBounding, def, maxX);
 			}
 		}
 	}
@@ -307,9 +308,9 @@ public class RavenJoin {
 			switch (checked.a) {
 				case TotalOverlap:
 					if (TreeExtensions.isLeaf(p.a)) {
-						ExtractCells((Leaf<String, Geometry>) p.a, checked.b, checked.c, def);
+						ExtractCells((Leaf<String, Geometry>) p.a, checked.b, checked.c, def, k2Raster.getSize()-1);
 					} else {
-						addDescendantsLeaves((NonLeaf<String, Geometry>) p.a, checked.b, checked.c, def);
+						addDescendantsLeaves((NonLeaf<String, Geometry>) p.a, checked.b, checked.c, def, k2Raster.getSize()-1);
 					}
 					break;
 				case PossibleOverlap:
@@ -321,10 +322,10 @@ public class RavenJoin {
 						MBROverlapType overlap = checkMBR(checked.b, checked.c, p.a.geometry().mbr(), lo, hi, checked.d, checked.e);
 						switch (overlap) {
 							case TotalOverlap:
-								ExtractCells((Leaf<String, Geometry>) p.a, checked.b, checked.c, def);
+								ExtractCells((Leaf<String, Geometry>) p.a, checked.b, checked.c, def, k2Raster.getSize()-1);
 								break;
 							case PartialOverlap:
-								ExtractCells((Leaf<String, Geometry>) p.a, checked.b, checked.c, prob);
+								ExtractCells((Leaf<String, Geometry>) p.a, checked.b, checked.c, prob, k2Raster.getSize()-1);
 								Logger.log(p.a.geometry().mbr());
 								break;
 							case NoOverlap:
@@ -346,7 +347,7 @@ public class RavenJoin {
 
 	protected void combineLists(List<Pair<Geometry, Collection<PixelRange>>> def,
 			List<Pair<Geometry, Collection<PixelRange>>> prob, int lo, int hi) {
-		System.out.println("def: " + def.size() + ", prob: " + prob.size());
+		Logger.log("def: " + def.size() + ", prob: " + prob.size());
 		for (Pair<Geometry, Collection<PixelRange>> pair : prob) {
 			Pair<Geometry, Collection<PixelRange>> result = new Pair<>(pair.first, new ArrayList<>());
 			for (PixelRange range : pair.second) {
