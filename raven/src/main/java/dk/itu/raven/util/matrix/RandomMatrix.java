@@ -17,9 +17,9 @@ public class RandomMatrix extends Matrix {
 	}
 
 	private void init(Random r, int maxValue) {
-		M = new int[width][height];
-		for (int i = 0; i < width; i++) {
-			for (int j = 0; j < height; j++) {
+		M = new int[height][width];
+		for (int i = 0; i < height; i++) {
+			for (int j = 0; j < width; j++) {
 				int random = r.nextInt(maxValue + 1);
 				M[i][j] = random;
 			}

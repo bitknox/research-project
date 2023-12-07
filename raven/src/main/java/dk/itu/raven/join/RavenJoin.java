@@ -76,8 +76,8 @@ public class RavenJoin {
 			for (int y = miny; y < maxy; y++) {
 				if (miny == maxy) {
 					if (Math.round(b * (y+0.5) - c) == 0) {
-						int start = (int) Math.round(Math.min(old.x(), next.x())) - rasterBounding.getTopX();
-						int end = (int) Math.round(Math.max(old.x(), next.x())) - rasterBounding.getTopX();
+						int start = (int) Math.floor(Math.min(old.x(), next.x())) - rasterBounding.getTopX();
+						int end = (int) Math.ceil(Math.max(old.x(), next.x())) - rasterBounding.getTopX();
 						BST<Integer, Integer> bst = intersections.get(y - rasterBounding.getTopY());
 						incrementSet(bst, start);
 						incrementSet(bst, end);
@@ -85,7 +85,7 @@ public class RavenJoin {
 				} else {
 					double x = (c - b * (y+0.5)) / a;
 					assert x - rasterBounding.getTopX() >= 0;
-					int ix = (int) Math.round(x - rasterBounding.getTopX());
+					int ix = (int) Math.floor(x - rasterBounding.getTopX());
 					ix = Math.min(rasterBounding.getSize(), Math.max(ix, 0));
 					BST<Integer, Integer> bst = intersections.get(y - rasterBounding.getTopY());
 					incrementSet(bst, ix);
@@ -100,7 +100,7 @@ public class RavenJoin {
 			boolean inRange = false;
 			int start = 0;
 			for (int x : bst.keys()) {
-				if ((bst.get(x) & 1) == 0) {
+				if ((bst.get(x) % 2) == 0) {
 					if (!inRange) {
 						ranges.add(new PixelRange(y + rasterBounding.getTopY(), x + rasterBounding.getTopX(), x + rasterBounding.getTopX()));
 						assert x >= 0;
@@ -153,11 +153,11 @@ public class RavenJoin {
 		}
 	}
 
-	//FIXME: should not always return the same index and rasterBounding as the one given to it
 	private Tuple5<QuadOverlapType, Integer, Square, Integer, Integer> checkQuadrant(int k2Index, Square rasterBounding,
 			Rectangle bounding, int lo, int hi, int min, int max) {
 		int vMinMBR = min;
 		int vMaxMBR = max;
+		Logger.log(vMinMBR + ", " + vMaxMBR);
 		int returnedK2Index = k2Index;
 		Square returnedrasterBounding = rasterBounding;
 		Stack<Tuple4<Integer, Square, Integer, Integer>> k2Nodes = new Stack<>();
@@ -172,6 +172,18 @@ public class RavenJoin {
 				if (childRasterBounding.contains(bounding)) {
 					vMinMBR = k2Raster.computeVMin(node.d, node.c, child);
 					vMaxMBR = k2Raster.computeVMax(node.d, child);
+					if (childSize <= 2048) {
+						int[] vals = k2Raster.getWindow(childRasterBounding.getTopY(), childRasterBounding.getTopY() + childSize - 1, childRasterBounding.getTopX(), childRasterBounding.getTopX() + childSize - 1);
+						int realmin = vals[0],realmax = vals[0];
+						for (int val : vals) {
+							realmin = Math.min(realmin,val);
+							realmax = Math.max(realmax,val);
+						}
+						if (realmin != vMinMBR || realmax != vMaxMBR) {
+							// throw new RuntimeException("vMinMBR or vMaxMBR is wrong");
+							System.out.println("vMinMBR or vMaxMBR is wrong");
+						}
+					}
 					k2Nodes.push(new Tuple4<>(child, childRasterBounding, vMinMBR, vMaxMBR));
 					returnedK2Index = child;
 					returnedrasterBounding = childRasterBounding;
@@ -180,11 +192,10 @@ public class RavenJoin {
 			}
 		}
 
-		if (vMinMBR > vMaxMBR) {
-			// Logger.log("BOGUS: " + vMinMBR + ", " + vMaxMBR);
-		}
+		Logger.log(vMinMBR + ", " + vMaxMBR);
 
 		if (lo <= vMinMBR && hi >= vMaxMBR) {
+			System.out.println("total overlap for " + returnedrasterBounding + " with mbr " + bounding);
 			return new Tuple5<>(QuadOverlapType.TotalOverlap, returnedK2Index, returnedrasterBounding, vMinMBR, vMaxMBR);
 		} else if (vMinMBR > hi || vMaxMBR < lo) {
 			return new Tuple5<>(QuadOverlapType.NoOverlap, returnedK2Index, returnedrasterBounding, vMinMBR, vMaxMBR);
@@ -195,57 +206,49 @@ public class RavenJoin {
 
 	private MBROverlapType checkMBR(int k2Index, Square rasterBounding, Rectangle bounding,
 			int lo, int hi, int min, int max) {
-		// Logger.log("Call arguments:");
-		// Logger.log(rasterBounding);
-		// Logger.log(bounding);
-		// Logger.log();
-		// // Logger.log("checking MBR");
 		int vMinMBR = Integer.MAX_VALUE;
 		int vMaxMBR = Integer.MIN_VALUE;
+
 		Stack<Tuple4<Integer, Square, Integer, Integer>> k2Nodes = new Stack<>();
 		k2Nodes.push(new Tuple4<>(k2Index, rasterBounding, min, max));
+
 		while (!k2Nodes.empty()) {
 			Tuple4<Integer, Square, Integer, Integer> node = k2Nodes.pop();
 			int[] children = k2Raster.getChildren(node.a);
 			int childSize = node.b.getSize() / K2Raster.k;
-			// Logger.log(children.length);
-			// Logger.log(k2Raster.computeVMax(node.d, node.a) + ", " + k2Raster.computeVMin(node.d, node.c, node.a));
+
 			if (children.length == 0 && rasterBounding.intersects(bounding)) {
-				// Logger.log("leaf node intersects");
-				vMinMBR = Math.min(k2Raster.computeVMax(node.d, node.a),vMinMBR);
-				vMaxMBR = Math.max(k2Raster.computeVMax(node.d, node.a),vMaxMBR);
+				if (k2Raster.computeVMax(node.d, node.a) != k2Raster.computeVMin(node.d, node.c, node.a)) {
+					throw new RuntimeException("VMin and VMax were different at root node");
+				}
+				vMinMBR = Math.min(k2Raster.computeVMax(node.d, node.a), vMinMBR);
+				vMaxMBR = Math.max(k2Raster.computeVMax(node.d, node.a), vMaxMBR);
 			}
+
 			for (int i = 0; i < children.length; i++) {
 				int child = children[i];
 				Square childRasterBounding = node.b.getChildSquare(childSize, i, K2Raster.k);
+				
 				if (childRasterBounding.intersects(bounding)) {
 					int vminVal = k2Raster.computeVMin(node.d, node.c, child);
 					int vmaxVal = k2Raster.computeVMax(node.d, child);
-					// Logger.log(vminVal);
-					// Logger.log(vmaxVal);
 					if (childRasterBounding.isContained(bounding)) {
-						// Logger.log("contained");
-						vMinMBR = Math.min(vminVal,vMinMBR);
-						vMaxMBR = Math.max(vmaxVal,vMaxMBR);
+						vMinMBR = Math.min(vminVal, vMinMBR);
+						vMaxMBR = Math.max(vmaxVal, vMaxMBR);
 					} else {
-						// Logger.log("not contained");
-						// Logger.log(childRasterBounding);
-						// Logger.log(bounding);
 						k2Nodes.push(new Tuple4<>(child, childRasterBounding, vminVal, vmaxVal));
 					}
 				}
 			}
 		}
-		// Logger.log(vMinMBR + ", " + vMaxMBR);
-		// Logger.log();
+		if (vMinMBR == Integer.MAX_VALUE || vMaxMBR == Integer.MIN_VALUE) {
+			throw new RuntimeException("rasterBounding was never contained in bounding");
+		}
 		if (vMinMBR >= lo && vMaxMBR <= hi) {
-			// // Logger.log("total");
 			return MBROverlapType.TotalOverlap;
 		} else if (vMinMBR > hi || vMaxMBR < lo) {
-			// // Logger.log("no");
 			return MBROverlapType.NoOverlap;
 		} else {
-			// // Logger.log("partial");
 			return MBROverlapType.PartialOverlap;
 		}
 	}
@@ -258,20 +261,19 @@ public class RavenJoin {
 	// https://journals.plos.org/plosone/article/file?id=10.1371/journal.pone.0226943&type=printable
 	public List<Pair<Geometry, Collection<PixelRange>>> join(int lo, int hi) {
 		List<Pair<Geometry, Collection<PixelRange>>> def = new ArrayList<>(), prob = new ArrayList<>();
-		Stack<Tuple3<Node<String, Geometry>, Integer, Square>> S = new Stack<>();
+		Stack<Tuple5<Node<String, Geometry>, Integer, Square,Integer,Integer>> S = new Stack<>();
 
-		
+		int[] minmax = k2Raster.getValueRange();
 
 		for (Node<String, Geometry> node : TreeExtensions.getChildren(tree.root().get())) {
-			S.push(new Tuple3<>(node, 0, new Square(0, 0, k2Raster.getSize())));
+			S.push(new Tuple5<>(node, 0, new Square(0, 0, k2Raster.getSize()), minmax[0], minmax[1]));
 		}
 
 		while (!S.empty()) {
-			Tuple3<Node<String, Geometry>, Integer, Square> p = S.pop();
-			int[] range = k2Raster.getValueRange();
+			Tuple5<Node<String, Geometry>, Integer, Square, Integer, Integer> p = S.pop();
 			Tuple5<QuadOverlapType, Integer, Square, Integer, Integer> checked = checkQuadrant(p.b, p.c, p.a.geometry().mbr(),
-					lo, hi, range[0],
-					range[1]);
+					lo, hi, p.d,
+					p.e);
 			switch (checked.a) {
 				case TotalOverlap:
 					if (TreeExtensions.isLeaf(p.a)) {
@@ -283,7 +285,7 @@ public class RavenJoin {
 				case PossibleOverlap:
 					if (!TreeExtensions.isLeaf(p.a)) {
 						for (Node<String, Geometry> c : ((NonLeaf<String, Geometry>) p.a).children()) {
-							S.push(new Tuple3<Node<String, Geometry>, Integer, Square>(c, checked.b, checked.c));
+							S.push(new Tuple5<Node<String, Geometry>, Integer, Square, Integer, Integer>(c, checked.b, checked.c,checked.d, checked.e));
 						}
 					} else {
 						MBROverlapType overlap = checkMBR(checked.b, checked.c, p.a.geometry().mbr(), lo, hi, checked.d, checked.e);
@@ -293,6 +295,7 @@ public class RavenJoin {
 								break;
 							case PartialOverlap:
 								ExtractCells((Leaf<String, Geometry>) p.a, checked.b, checked.c, prob);
+								System.out.println(p.a.geometry().mbr());
 								break;
 							case NoOverlap:
 								// ignored
@@ -313,11 +316,11 @@ public class RavenJoin {
 
 	public void combineLists(List<Pair<Geometry, Collection<PixelRange>>> def,
 			List<Pair<Geometry, Collection<PixelRange>>> prob, int lo, int hi) {
-		Logger.log("def: " + def.size() + ", prob: " + prob.size());
+		System.out.println("def: " + def.size() + ", prob: " + prob.size());
 		for (Pair<Geometry, Collection<PixelRange>> pair : prob) {
 			Pair<Geometry, Collection<PixelRange>> result = new Pair<>(pair.first, new ArrayList<>());
 			for (PixelRange range : pair.second) {
-				int[] values = k2Raster.getWindow(range.row, range.row, range.x1, range.x2);
+				int[] values = k2Raster.getWindow(range.row, range.row, range.x1, range.x2-1);
 				for (int i = 0; i < values.length; i++) {
 					int start = i;
 					while (i < values.length && values[i] >= lo && values[i] <= hi) {
