@@ -42,23 +42,26 @@ public class Raven {
         Logger.setDebug(false);
 
         // testThings();
-        
+
         FileRasterReader rasterReader = new MilRasterReader(new File(
-            "C:\\Users\\alexa\\Downloads\\glc2000_v1_1_Tiff\\Tiff"));
-            // RasterReader rasterReader = new GeneratorRasterReader(4000, 4000, 129384129, 12,
-            //                 new TFWFormat(0.09, 0, 0, -0.09 , -180, 90));
+                "C:\\Users\\Johan\\Documents\\Research Project\\research-project\\data\\testdata\\raster\\glc2000"));
+        // RasterReader rasterReader = new GeneratorRasterReader(4000, 4000, 129384129,
+        // 12,
+        // new TFWFormat(0.09, 0, 0, -0.09 , -180, 90));
         TFWFormat format = rasterReader.getTransform();
 
         RTree<String, Geometry> rtree = RTree.star().maxChildren(6).create();
         ShapfileReader featureReader = new ShapfileReader(format);
-        // Pair<Iterable<Polygon>, ShapfileReader.ShapeFileBounds> geometries = featureReader.readShapefile(
-        //         "c:\\Users\\alexa\\Downloads\\cb_2018_us_state_500k.zip");
+        // Pair<Iterable<Polygon>, ShapfileReader.ShapeFileBounds> geometries =
+        // featureReader.readShapefile(
+        // "c:\\Users\\alexa\\Downloads\\cb_2018_us_state_500k.zip");
         Pair<Iterable<Polygon>, ShapfileReader.ShapeFileBounds> geometries = featureReader.readShapefile(
-                "c:\\Users\\alexa\\Downloads\\boundaries.zip");
-        
-        Rectangle rect = Geometries.rectangle(geometries.second.minx, geometries.second.miny, geometries.second.maxx, geometries.second.maxy);
+                "C:\\Users\\Johan\\Documents\\Research Project\\research-project\\data\\testdata\\vector\\boundaries.zip");
+
+        Rectangle rect = Geometries.rectangle(geometries.second.minx, geometries.second.miny, geometries.second.maxx,
+                geometries.second.maxy);
         Visualizer visualizer = new Visualizer((int) (rect.x2() - rect.x1()), (int) (rect.y2() - rect.y1()));
-        
+
         Matrix rasterData = rasterReader.readRasters(rect);
         for (Polygon geom : geometries.first) {
             geom.offset(-geometries.second.minx, -geometries.second.miny);
@@ -66,7 +69,7 @@ public class Raven {
         }
         // Logger.log(rasterData.get(8000, 5000));
         // for (Geometry geom : geometries.first) {
-        //     rtree = rtree.add(null, geom);
+        // rtree = rtree.add(null, geom);
         // }
 
         K2Raster k2Raster = new K2Raster(rasterData);
@@ -82,9 +85,10 @@ public class Raven {
         for (int i = 0; i <= 23; i++) {
             long start = System.nanoTime();
             List<Pair<Geometry, Collection<PixelRange>>> result = join.join(i, i);
-            System.out.println(System.nanoTime()- start);
-            visualizer.drawRaster(result,geometries.first, new VisualizerOptions("./outPutRasterBoundaries- + " + i + " +.jpg",
-            false, true));
+            System.out.println(System.nanoTime() - start);
+            visualizer.drawRaster(result, geometries.first,
+                    new VisualizerOptions("./outPutRasterBoundaries- + " + i + " +.jpg",
+                            false, true));
         }
         Logger.log("Done joining");
     }
