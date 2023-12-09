@@ -1,28 +1,35 @@
 package dk.itu.raven.join;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Random;
 import java.util.Stack;
 
-import com.github.davidmoten.rtree2.RTree;
+import org.apache.hadoop.util.IndexedSortable;
+import org.apache.hadoop.util.QuickSort;
+
 import com.github.davidmoten.rtree2.Entry;
 import com.github.davidmoten.rtree2.Leaf;
 import com.github.davidmoten.rtree2.Node;
 import com.github.davidmoten.rtree2.NonLeaf;
+import com.github.davidmoten.rtree2.RTree;
+import com.github.davidmoten.rtree2.geometry.Geometries;
 import com.github.davidmoten.rtree2.geometry.Geometry;
 import com.github.davidmoten.rtree2.geometry.Point;
 import com.github.davidmoten.rtree2.geometry.Rectangle;
 
-import dk.itu.raven.util.TreeExtensions;
-import dk.itu.raven.util.Tuple4;
-import dk.itu.raven.util.Tuple5;
 import dk.itu.raven.geometry.PixelRange;
 import dk.itu.raven.geometry.Polygon;
 import dk.itu.raven.ksquared.K2Raster;
 import dk.itu.raven.util.BST;
-import dk.itu.raven.util.Pair;
 import dk.itu.raven.util.Logger;
+import dk.itu.raven.util.Pair;
+import dk.itu.raven.util.TreeExtensions;
+import dk.itu.raven.util.Tuple4;
+import dk.itu.raven.util.Tuple5;
+import edu.ucr.cs.bdlab.beast.util.DynamicArrays;
 
 public class RavenJoin {
 	private enum QuadOverlapType {
@@ -43,6 +50,158 @@ public class RavenJoin {
 	public RavenJoin(K2Raster k2Raster, RTree<String, Geometry> tree) {
 		this.k2Raster = k2Raster;
 		this.tree = tree;
+	}
+
+	public static void main(String[] args) {
+		List<Point> points = new ArrayList<>();
+		double angle = 0;
+		int numPoints = 32_000;
+		double length = 2.0;
+		double size = 0;
+		points.add(Geometries.point(0, 0));
+		for (int i = 0; i < numPoints; i++) {
+			angle += 2*Math.PI/numPoints;
+			Point last = points.get(points.size()-1);
+			Point next = Geometries.point(last.x() + Math.cos(angle)*length, last.y() + Math.sin(angle)*length);
+			points.add(next);
+			size = Math.max(size,next.y());
+			size = Math.max(size,next.x());
+		}
+		Polygon poly = new Polygon(points);
+		RavenJoin join = new RavenJoin(null, null);
+		Square square = new Square(0,0,(int) size+10);
+		long start = System.nanoTime();
+		join.ExtractCellsPolygon(poly, 0, square, square.getSize());
+		System.out.println(System.nanoTime() - start);
+		start = System.nanoTime();
+		join.ExtractCellsPolygonBeast(poly, 0, square, square.getSize());
+		System.out.println(System.nanoTime() - start);
+		
+	}
+
+	private int[] xs;
+	private int[] ys;
+	private int[] polygonIndexes;
+	private int[] tileID;
+	int numIntersections = 0;
+
+	protected void makeRoomForAdditionalIntersections(int newSize) {
+		int nextPowerOfTwo = Integer.highestOneBit(newSize) * 2;
+		xs = DynamicArrays.expand(xs, nextPowerOfTwo);
+		ys = DynamicArrays.expand(ys, nextPowerOfTwo);
+		polygonIndexes = DynamicArrays.expand(polygonIndexes, nextPowerOfTwo);
+	}
+
+	protected Collection<PixelRange> ExtractCellsPolygonBeast(Polygon polygon, int pk, Square rasterBounding, int maxX) {
+        Point pt1 = polygon.getFirst();
+        for (Point pt2 : polygon) {
+          double dx = pt2.x() - pt1.x();
+          double dy = pt2.y() - pt1.y();
+
+          // Locate the first (inclusive) and last (exclusive) rows in the raster file for this line segment
+          int row1 = (int) Math.min(rasterBounding.getTopY()+rasterBounding.getSize(), Math.max(rasterBounding.getTopY(), Math.round(Math.min(pt1.y(), pt2.y()))));
+          int row2 = (int) Math.min(rasterBounding.getTopY()+rasterBounding.getSize(), Math.max(rasterBounding.getTopY(), Math.round(Math.max(pt1.y(), pt2.y()))));
+
+          makeRoomForAdditionalIntersections(numIntersections + Math.max(0, row2 - row1));
+          for (int row = row1; row < row2; row++) {
+            // Find the intersection of the line segment (p1, p2) and the straight line (y = scanLineY)
+            double xIntersection = pt2.x() - (pt2.y() - (row + 0.5)) * dx / dy;
+            xs[numIntersections] = (int) Math.max(0, Math.min(Math.round(xIntersection), maxX));
+            ys[numIntersections] = row;
+            polygonIndexes[numIntersections] = 0; // some polygon ID
+            numIntersections++;
+          }
+          pt1 = pt2;
+        }
+
+		tileID = new int[numIntersections];
+
+		IndexedSortable polygonIndexSorter = new IndexedSortable() {
+		@Override
+		public int compare(int i, int j) {
+			int diff = tileID[i] - tileID[j];
+			if (diff == 0) {
+			diff = polygonIndexes[i] - polygonIndexes[j];
+			if (diff == 0) {
+				diff = ys[i] - ys[j];
+				if (diff == 0)
+				diff = xs[i] - xs[j];
+			}
+			}
+			return diff;
+		}
+
+		@Override
+		public void swap(int i, int j) {
+			// Swap y, x, pid, and tileID
+			int temp = ys[i];
+			ys[i] = ys[j];
+			ys[j] = temp;
+			temp = xs[i];
+			xs[i] = xs[j];
+			xs[j] = temp;
+			temp = polygonIndexes[i];
+			polygonIndexes[i] = polygonIndexes[j];
+			polygonIndexes[j] = temp;
+			temp = tileID[i];
+			tileID[i] = tileID[j];
+			tileID[j] = temp;
+		}
+		};
+		new QuickSort().sort(polygonIndexSorter, 0, numIntersections);
+		int numRemovedIntersections = 0;
+		// Now, make one pass over all the intersections and set the tile IDs
+		// For intersection segments that cross over tile boundaries, split it across the tile boundary
+		if (true) {
+			// In this case, each intersection represents one points in the raster.
+			// This part will scan all the intersections and merge consecutive intersections that belong
+			// to the same geometry, are at the same scanline (y-axis), and are in the same tile.
+			// We start from the end because we might add new intersections as we process them
+			for (int $i = numIntersections - 1; $i >= 0; $i -= 1) {
+			// Compute tile ID for this intersection
+			tileID[$i] = 0;
+			if ($i != numIntersections - 1 && // Except for the last intersection
+				tileID[$i + 1] == tileID[$i] && // If this and the next intersections are in the same tile
+				polygonIndexes[$i + 1] == polygonIndexes[$i] && // Correspond to the same feature
+				ys[$i] == ys[$i + 1] && // Are at the same row (scanline)
+				(xs[$i] == xs[$i + 1] || xs[$i] == xs[$i + 1] - 1)) { // Correspond to adjacent or overlapping pixels
+				// Remove the last pixel since it is included in the range
+				tileID[$i + 1] = 1;
+				numRemovedIntersections += 1;
+			} else {
+				// Convert the single pixel intersection to a range
+				makeRoomForAdditionalIntersections(numIntersections + 1);
+				tileID = DynamicArrays.expand(tileID, xs.length);
+				xs[numIntersections] = xs[$i]; // The range contains one pixel and is inclusive of beginning and end
+				ys[numIntersections] = ys[$i]; // At the same scanline
+				tileID[numIntersections] = tileID[$i]; // At the same tile ID
+				polygonIndexes[numIntersections] = polygonIndexes[$i]; // The same geometry
+				numIntersections += 1;
+			}
+			}
+		}
+		// Sort again after adding the tile IDs. Sort order will be <tile ID, polygon index,y, x>
+		new QuickSort().sort(polygonIndexSorter, 0, numIntersections);
+		// Now, remove all the empty ranges that have been pushed to the end
+		numIntersections -= numRemovedIntersections;
+		// Finally, convert the intersections to ranges in the form (tile ID, y, polygon index, x1, x2)
+		numIntersections /= 2;
+		int[] newYs = new int[numIntersections];
+		int[] newTileIDs = new int[numIntersections];
+		int[] newPolygonIndex = new int[numIntersections];
+	
+		for (int i = 0; i < numIntersections; i++) {
+			newYs[i] = ys[i * 2];
+			newTileIDs[i] = tileID[i * 2];
+			newPolygonIndex[i] = polygonIndexes[i * 2];
+		}
+	
+		xs = Arrays.copyOf(xs, numIntersections * 2);
+		ys = newYs;
+		tileID = newTileIDs;
+		polygonIndexes = newPolygonIndex;
+
+		return null;
 	}
 
 	/**
@@ -75,15 +234,6 @@ public class RavenJoin {
 
 			// compute all intersections between the line segment and horizontal pixel lines
 			for (int y = miny; y < maxy; y++) {
-				// if (miny == maxy) { // horizontal line segment
-				// 	if (Math.round(b * (y+0.5) - c) == 0) {
-				// 		int start = (int) Math.floor(Math.min(old.x(), next.x())) - rasterBounding.getTopX();
-				// 		int end = (int) Math.ceil(Math.max(old.x(), next.x())) - rasterBounding.getTopX();
-				// 		BST<Integer, Integer> bst = intersections.get(y - rasterBounding.getTopY());
-				// 		incrementSet(bst, start);
-				// 		incrementSet(bst, end);
-				// 	}
-				// } else {
 				double x = (c - b * (y+0.5)) / a;
 				assert x - rasterBounding.getTopX() >= 0;
 				int ix = (int) Math.floor(x - rasterBounding.getTopX());
@@ -91,7 +241,6 @@ public class RavenJoin {
 				ix = Math.min(maxX, ix);
 				BST<Integer, Integer> bst = intersections.get(y - rasterBounding.getTopY());
 				incrementSet(bst, ix);
-				// }
 			}
 			old = next;
 		}

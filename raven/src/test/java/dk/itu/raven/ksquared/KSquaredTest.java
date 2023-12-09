@@ -2,13 +2,20 @@ package dk.itu.raven.ksquared;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Random;
 import java.util.Stack;
 
 import org.junit.jupiter.api.Test;
+
+import com.github.davidmoten.rtree2.geometry.Geometries;
+
 import org.junit.jupiter.api.RepeatedTest;
 
 import dk.itu.raven.util.matrix.RandomMatrix;
+import dk.itu.raven.io.FileRasterReader;
+import dk.itu.raven.io.MilRasterReader;
 import dk.itu.raven.join.Square;
 import dk.itu.raven.util.matrix.ArrayMatrix;
 import dk.itu.raven.util.matrix.Matrix;

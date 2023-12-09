@@ -44,7 +44,7 @@ public class Raven {
         // testThings();
         
         FileRasterReader rasterReader = new MilRasterReader(new File(
-            "C:\\Users\\alexa\\Downloads\\glc2000_v1_1_Tiff\\Tiff"));
+            "C:\\Users\\alexa\\Downloads\\OB_50M\\OB_50M"));
             // RasterReader rasterReader = new GeneratorRasterReader(4000, 4000, 129384129, 12,
             //                 new TFWFormat(0.09, 0, 0, -0.09 , -180, 90));
         TFWFormat format = rasterReader.getTransform();

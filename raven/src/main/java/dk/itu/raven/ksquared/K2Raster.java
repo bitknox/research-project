@@ -2,7 +2,9 @@ package dk.itu.raven.ksquared;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Stack;
 
+import dk.itu.raven.join.Square;
 import dk.itu.raven.util.BitMap;
 import dk.itu.raven.util.GoodArrayList;
 import dk.itu.raven.util.GoodIntArrayList;
@@ -144,7 +146,11 @@ public class K2Raster {
                 if (T.get(i).isSet(j)) {
                     int start = internalNodeCount * k * k;
                     for (int l = start; l < start + k * k; l++) {
-                        LMaxList[imax++] = Math.abs(VMax.get(i).get(j) - VMax.get(i + 1).get(l));
+                        try {
+                            LMaxList[imax++] = Math.abs(VMax.get(i).get(j) - VMax.get(i + 1).get(l));
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
                     }
                     internalNodeCount++;
                 }
@@ -293,7 +299,7 @@ public class K2Raster {
      */
     private int getCell(int n, int r, int c, int z, int maxval) {
         int nKths = (n / k);
-        z = this.Tree.rank(z) * k * k;
+        z = this.Tree.rank(z) * k * k; // should use prefixsum
         z = z + (r / nKths) * k + (c / nKths);
         int val = LMax[z]; // 😡
         maxval = maxval - val;
