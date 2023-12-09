@@ -3,6 +3,7 @@ package dk.itu.raven.join;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.Stack;
@@ -24,6 +25,7 @@ import dk.itu.raven.geometry.PixelRange;
 import dk.itu.raven.geometry.Polygon;
 import dk.itu.raven.ksquared.K2Raster;
 import dk.itu.raven.util.BST;
+import dk.itu.raven.util.IntPair;
 import dk.itu.raven.util.Logger;
 import dk.itu.raven.util.Pair;
 import dk.itu.raven.util.TreeExtensions;
@@ -201,9 +203,9 @@ public class RavenJoin {
 		// line of the polygon and the line y=j happens at point (i,j)
 		// 1 on index i if the left-most pixel of row i intersects the polygon, 0
 		// otherwise
-		List<BST<Integer, Integer>> intersections = new ArrayList<BST<Integer, Integer>>(rasterBounding.getSize());
+		List<ArrayList<IntPair>> intersections = new ArrayList<ArrayList<IntPair>>(rasterBounding.getSize());
 		for (int i = 0; i < rasterBounding.getSize(); i++) {
-			intersections.add(i, new BST<>());
+			intersections.add(i, new ArrayList<>());
 		}
 
 		// a line is of the form a*x + b*y = c
@@ -226,7 +228,7 @@ public class RavenJoin {
 				int ix = (int) Math.floor(x - rasterBounding.getTopX());
 				ix = Math.min(rasterBounding.getSize(), Math.max(ix, 0));
 				ix = Math.min(maxX, ix);
-				BST<Integer, Integer> bst = intersections.get(y - rasterBounding.getTopY());
+				ArrayList<IntPair> bst = intersections.get(y - rasterBounding.getTopY());
 				incrementSet(bst, ix);
 			}
 			old = next;
@@ -234,25 +236,26 @@ public class RavenJoin {
 
 		Collection<PixelRange> ranges = new ArrayList<>();
 		for (int y = 0; y < rasterBounding.getSize(); y++) {
-			BST<Integer, Integer> bst = intersections.get(y);
+			ArrayList<IntPair> bst = intersections.get(y);
+			Collections.sort(bst);
 			boolean inRange = false;
 			int start = 0;
-			for (int x : bst.keys()) {
-				if ((bst.get(x) % 2) == 0) { // an even number of intersections happen at this point
+			for (IntPair x : bst) {
+				if ((x.second % 2) == 0) { // an even number of intersections happen at this point
 					if (!inRange) {
 						// if a range is ongoing, ignore these intersections, otherwise add this single
 						// pixel as a range
-						ranges.add(new PixelRange(y + rasterBounding.getTopY(), x + rasterBounding.getTopX(),
-								x + rasterBounding.getTopX()));
+						ranges.add(new PixelRange(y + rasterBounding.getTopY(), x.first + rasterBounding.getTopX(),
+								x.first + rasterBounding.getTopX()));
 					}
 				} else {
 					if (inRange) {
 						inRange = false;
 						ranges.add(new PixelRange(y + rasterBounding.getTopY(), start + rasterBounding.getTopX(),
-								x + rasterBounding.getTopX()));
+								x.first + rasterBounding.getTopX()));
 					} else {
 						inRange = true;
-						start = x;
+						start = x.first;
 					}
 				}
 			}
@@ -268,12 +271,11 @@ public class RavenJoin {
 	 * @param bst a set of intersections
 	 * @param key an x-ordinate of an intersection
 	 */
-	private void incrementSet(BST<Integer, Integer> bst, Integer key) {
-		Integer num = bst.get(key);
-		if (num == null) {
-			bst.put(key, 1);
+	private void incrementSet(ArrayList<IntPair> bst, Integer key) {
+		if (bst.size() > 0 && bst.get(bst.size()-1).first == key) {
+			bst.get(bst.size()-1).second++;
 		} else {
-			bst.put(key, num + 1);
+			bst.add(new IntPair(key, 1));
 		}
 	}
 
