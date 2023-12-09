@@ -11,81 +11,56 @@ import java.util.Stack;
 import org.apache.hadoop.fs.Path;
 import org.locationtech.jts.geom.Coordinate;
 
-import com.github.davidmoten.rtree2.RTree;
 import com.github.davidmoten.rtree2.geometry.Geometries;
-import com.github.davidmoten.rtree2.geometry.Geometry;
-import com.github.davidmoten.rtree2.geometry.Rectangle;
+import com.github.davidmoten.rtree2.geometry.Point;
 
-import dk.itu.raven.geometry.PixelRange;
 import dk.itu.raven.geometry.Polygon;
-import dk.itu.raven.io.GeneratorRasterReader;
-import dk.itu.raven.io.MilRasterReader;
-import dk.itu.raven.io.BeastRasterReader;
-import dk.itu.raven.io.FileRasterReader;
-import dk.itu.raven.io.RasterReader;
-import dk.itu.raven.io.ShapfileReader;
-import dk.itu.raven.io.TFWFormat;
+
 import dk.itu.raven.join.RavenJoin;
 import dk.itu.raven.join.Square;
-import dk.itu.raven.ksquared.K2Raster;
-import dk.itu.raven.util.Pair;
-import dk.itu.raven.util.matrix.ArrayMatrix;
-import dk.itu.raven.util.matrix.Matrix;
-import dk.itu.raven.util.matrix.RandomMatrix;
-import dk.itu.raven.visualizer.Visualizer;
-import dk.itu.raven.visualizer.VisualizerOptions;
-import dk.itu.raven.util.Logger;
 
 public class Raven {
 
     public static void main(String[] args) throws IOException {
-        Logger.setDebug(false);
+        ArrayList<Long> times = new ArrayList<>();
+        int[] numPoints = { 2000, 4000, 8000, 16000, 32000, 64000, 128000, 256000 };
+        for (int numP : numPoints) {
 
-        // testThings();
-        
-        FileRasterReader rasterReader = new MilRasterReader(new File(
-            "C:\\Users\\alexa\\Downloads\\OB_50M\\OB_50M"));
-            // RasterReader rasterReader = new GeneratorRasterReader(4000, 4000, 129384129, 12,
-            //                 new TFWFormat(0.09, 0, 0, -0.09 , -180, 90));
-        TFWFormat format = rasterReader.getTransform();
+            for (int j = 0; j < 1000; j++) {
+                List<Point> points = new ArrayList<>();
+                double angle = 0;
+                double length = 2.0;
+                double size = 0;
+                points.add(Geometries.point(0, 0));
+                for (int i = 0; i < numP; i++) {
+                    angle += 2 * Math.PI / numP;
+                    Point last = points.get(points.size() - 1);
+                    Point next = Geometries.point(last.x() + Math.cos(angle) * length,
+                            last.y() + Math.sin(angle) * length);
+                    points.add(next);
+                    size = Math.max(size, next.y());
+                    size = Math.max(size, next.x());
+                }
+                Polygon poly = new Polygon(points);
+                RavenJoin join = new RavenJoin(null, null);
+                Square square = new Square(0, 0, (int) size + 10);
+                long start = System.nanoTime();
+                join.ExtractCellsPolygonBeast(poly, 0, square, square.getSize());
+                times.add(System.nanoTime() - start);
 
-        RTree<String, Geometry> rtree = RTree.star().maxChildren(6).create();
-        ShapfileReader featureReader = new ShapfileReader(format);
-        // Pair<Iterable<Polygon>, ShapfileReader.ShapeFileBounds> geometries = featureReader.readShapefile(
-        //         "c:\\Users\\alexa\\Downloads\\cb_2018_us_state_500k.zip");
-        Pair<Iterable<Polygon>, ShapfileReader.ShapeFileBounds> geometries = featureReader.readShapefile(
-                "c:\\Users\\alexa\\Downloads\\boundaries.zip");
-        
-        Rectangle rect = Geometries.rectangle(geometries.second.minx, geometries.second.miny, geometries.second.maxx, geometries.second.maxy);
-        Visualizer visualizer = new Visualizer((int) (rect.x2() - rect.x1()), (int) (rect.y2() - rect.y1()));
-        
-        Matrix rasterData = rasterReader.readRasters(rect);
-        for (Polygon geom : geometries.first) {
-            geom.offset(-geometries.second.minx, -geometries.second.miny);
-            rtree = rtree.add(null, geom);
+            }
+            double avg = calculateAverage(times);
+            System.out.println("Average time: " + avg);
+            times.clear();
+
         }
-        // Logger.log(rasterData.get(8000, 5000));
-        // for (Geometry geom : geometries.first) {
-        //     rtree = rtree.add(null, geom);
-        // }
 
-        K2Raster k2Raster = new K2Raster(rasterData);
-        visualizer.drawVectorRasterOverlap(geometries.first, rasterData, rtree, k2Raster);
-        Logger.log("Done Building Raster");
-        Logger.log(k2Raster.Tree.size());
+    }
 
-        visualizer.drawShapefile(geometries.first, format);
-
-        Logger.log("Done Building rtree");
-
-        RavenJoin join = new RavenJoin(k2Raster, rtree);
-        for (int i = 0; i <= 23; i++) {
-            long start = System.nanoTime();
-            List<Pair<Geometry, Collection<PixelRange>>> result = join.join(i, i);
-            System.out.println(System.nanoTime()- start);
-            visualizer.drawRaster(result,geometries.first, new VisualizerOptions("./outPutRasterBoundaries- + " + i + " +.jpg",
-            false, true));
-        }
-        Logger.log("Done joining");
+    private static double calculateAverage(List<Long> marks) {
+        return marks.stream()
+                .mapToDouble(d -> d)
+                .average()
+                .orElse(0.0);
     }
 }
