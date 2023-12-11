@@ -26,8 +26,10 @@ public class K2Raster {
     public BitMap Tree; // A tree where the i'th index is a one iff. the node with index i is internal
     // public DAC LMax;
     // public DAC LMin;
-    private int[] LMax; // stores the difference between the maximum value stored in a node and the maximum value of its parent node
-    private int[] LMin; // stores the difference between the minimum value stored in a node and the minimum value of its parent node
+    private int[] LMax; // stores the difference between the maximum value stored in a node and the
+                        // maximum value of its parent node
+    private int[] LMin; // stores the difference between the minimum value stored in a node and the
+                        // minimum value of its parent node
 
     private int n; // the size of the matrix, always a power of k
     private int[] prefixsum; // a prefix sum of the tree
@@ -61,28 +63,28 @@ public class K2Raster {
             T.add(new BitMap(40));
             VMax.add(new GoodIntArrayList());
             VMin.add(new GoodIntArrayList());
-            
+
         }
 
-        Pair<Integer,Integer> res = Build(this.n, 1, 0, 0);
+        long res = Build(this.n, 1, 0, 0);
         M = null;
-        maxval = res.first;
-        minval = res.second;
+        maxval = (int) (res >> 32);
+        minval = (int) (res & 0xffffffff);
         VMax.get(0).set(0, maxval);
         VMin.get(0).set(0, minval);
-        
+
         int size_max = 0;
         int size_min = 0;
         for (int i = 1; i < maxLevel; i++) {
             size_max += pmax[i];
             size_min += pmin[i];
         }
-        
+
         Logger.log("size_max: " + size_max);
         Logger.log("size_min: " + size_min);
 
-        int[] LMaxList = new int[size_max+1];
-        int[] LMinList = new int[size_min+1];
+        int[] LMaxList = new int[size_max + 1];
+        int[] LMinList = new int[size_min + 1];
 
         Tree = new BitMap(Math.max(1, size_max));
         int bitmapIndex = 0;
@@ -97,7 +99,7 @@ public class K2Raster {
             }
         }
         pmax[0] = 1;
-        
+
         if (maxval != minval) { // the root of the k2 raster tree is not a leaf
             Tree.set(0);
             T.get(0).set(0);
@@ -107,7 +109,7 @@ public class K2Raster {
             T.get(0).unset(0);
             pmin[0] = 0;
         }
-        
+
         prefixsum = new int[size_max + 1];
         prefixsum[0] = 0;
         for (int i = 1; i < size_max + 1; i++) {
@@ -115,7 +117,7 @@ public class K2Raster {
         }
 
         int imax = 0, imin = 0;
-        
+
         // compute LMin using the VMin computed in Build
         for (int i = 0; i < maxLevel - 2; i++) {
             int internalNodeCount = 0;
@@ -136,9 +138,9 @@ public class K2Raster {
         }
         VMin = null;
         pmin = null;
-        
+
         // compute LMax using the VMax computed in Build
-        for (int i = 0; i < maxLevel-1; i++) {
+        for (int i = 0; i < maxLevel - 1; i++) {
             int internalNodeCount = 0;
             for (int j = 0; j < pmax[i]; j++) {
                 if (T.get(i).isSet(j)) {
@@ -164,7 +166,8 @@ public class K2Raster {
     /**
      * 
      * @param index the LMax index of a node of the k2 raster tree
-     * @return {@code true} if the node corresponding to the given index is an internal node, {@code false} otherwise.
+     * @return {@code true} if the node corresponding to the given index is an
+     *         internal node, {@code false} otherwise.
      */
     public boolean hasChildren(int index) {
         return Tree.isSet(index);
@@ -182,9 +185,11 @@ public class K2Raster {
 
     /**
      * 
-     * @param parentMax The maximum value stored in the sub-matrix corresponding to the parent of the node with the given index.
-     * @param index the LMax index of a node of the k2 raster tree
-     * @return the maximum value stored in the sub-matrix corresponding to the node with the given index
+     * @param parentMax The maximum value stored in the sub-matrix corresponding to
+     *                  the parent of the node with the given index.
+     * @param index     the LMax index of a node of the k2 raster tree
+     * @return the maximum value stored in the sub-matrix corresponding to the node
+     *         with the given index
      */
     public int computeVMax(int parentMax, int index) {
         if (index == 0)
@@ -194,10 +199,13 @@ public class K2Raster {
 
     /**
      * 
-     * @param parentMax The maximum value stored in the sub-matrix corresponding to the parent of the node with the given index.
-     * @param parentMin The minimum value stored in the sub-matrix corresponding to the parent of the node with the given index.
-     * @param index the LMax index of a node of the k2 raster tree
-     * @return the minimum value stored in the sub-matrix corresponding to the node with the given index
+     * @param parentMax The maximum value stored in the sub-matrix corresponding to
+     *                  the parent of the node with the given index.
+     * @param parentMin The minimum value stored in the sub-matrix corresponding to
+     *                  the parent of the node with the given index.
+     * @param index     the LMax index of a node of the k2 raster tree
+     * @return the minimum value stored in the sub-matrix corresponding to the node
+     *         with the given index
      */
     public int computeVMin(int parentMax, int parentMin, int index) {
         if (index == 0)
@@ -236,7 +244,7 @@ public class K2Raster {
         return this.n;
     }
 
-    private Pair<Integer, Integer> Build(int n, int level, int row, int column) {
+    private long Build(int n, int level, int row, int column) {
         int minval = Integer.MAX_VALUE;
         int maxval = 0;
 
@@ -253,21 +261,23 @@ public class K2Raster {
                     VMax.get(level).set(pmax[level], matrixVal);
                     pmax[level]++;
                 } else {
-                    Pair<Integer, Integer> res = Build(n / k, level + 1, row + i * (n / k), column + j * (n / k));
-                    VMax.get(level).set(pmax[level], res.first);
-                    if (res.first != res.second) {
-                        VMin.get(level).set(pmin[level], res.second);
+                    long res = Build(n / k, level + 1, row + i * (n / k), column + j * (n / k));
+                    int first = (int) (res >> 32);
+                    int second = (int) (res & 0xffffffff);
+                    VMax.get(level).set(pmax[level], first);
+                    if (first != second) {
+                        VMin.get(level).set(pmin[level], second);
                         pmin[level]++;
                         T.get(level).set(pmax[level]);
                     } else {
                         T.get(level).unset(pmax[level]);
                     }
                     pmax[level]++;
-                    if (minval > res.second) {
-                        minval = res.second;
+                    if (minval > second) {
+                        minval = second;
                     }
-                    if (maxval < res.first) {
-                        maxval = res.first;
+                    if (maxval < first) {
+                        maxval = first;
                     }
                 }
             }
@@ -276,7 +286,7 @@ public class K2Raster {
             pmax[level] -= k * k;
         }
 
-        return new Pair<>(maxval, minval);
+        return (long) ((((long) maxval) << 32) | minval);
     }
 
     /**
@@ -317,7 +327,7 @@ public class K2Raster {
             int level, List<Pair<Integer, Integer>> indexRanks) {
         int nKths = (n / k);
         Pair<Integer, Integer> indexRank = indexRanks.get(level);
-        int rank = prefixsum[z+1];
+        int rank = prefixsum[z + 1];
         indexRank.first = z;
         indexRank.second = rank;
 
@@ -404,7 +414,7 @@ public class K2Raster {
         int cbasex, cbasey;
 
         int nKths = (n / k); // childsize
-        int rank = prefixsum[z+1];
+        int rank = prefixsum[z + 1];
         z = rank * k * k;
         int initialI = (r1 - basey) / nKths;
         int lastI = (r2 - basey) / nKths;
@@ -435,7 +445,7 @@ public class K2Raster {
                     }
                 } else {
                     // minvalp = computeVMin(maxval, minval, zp);
-                    minvalp = minval + LMin[prefixsum[zp+1]];
+                    minvalp = minval + LMin[prefixsum[zp + 1]];
                 }
                 if (minvalp > ve) {
                     continue;
@@ -461,7 +471,7 @@ public class K2Raster {
             }
         }
     }
-    
+
     /**
      * Reads data from a window of the matrix given by the two points
      * {@code (r1,c1)} and {@code (r2,c2)}
@@ -470,7 +480,8 @@ public class K2Raster {
      * @param r2 row number for the bottom right corner of window
      * @param c1 column number for the top left corner of window
      * @param c2 column number for the bottom right corner of window
-     * @return a window of the matrix with only the values {@code v} that satisfy {@code vb <= v <= ve}
+     * @return a window of the matrix with only the values {@code v} that satisfy
+     *         {@code vb <= v <= ve}
      */
     public int[] searchValuesInWindow(int r1, int r2, int c1, int c2, int thresholdLow, int thresholdHigh) {
         if (r1 < 0 || r1 >= n || r2 < 0 || r2 >= n || c1 < 0 || c1 >= n || c2 < 0
